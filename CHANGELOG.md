@@ -7,7 +7,10 @@
 
 -->
 
-# Unreleased
+# 0.15.0
+
+Closer to `dart-sass` 1.105.1: fugo-sass passes 8,612 of the 14,347 sass-spec specs that apply to
+`dart-sass` (60%), where 0.14.0 passed 7,342 (51%). It needs Rust 1.99.
 
 - `meta.module-variables(..)`, `meta.module-functions(..)` and `meta.keywords(..)` return their maps
   in definition order, as `dart-sass` does. They were ordered by when the thread had first met the
