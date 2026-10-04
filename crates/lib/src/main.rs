@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use std::{
     fs::OpenOptions,
     io::{Read, Write, stdin, stdout},

@@ -1,5 +1,7 @@
 //! `fugo-sass-spec`: runs sass-spec against fugo-sass (see the crate's README).
 
+#![forbid(unsafe_code)]
+
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};

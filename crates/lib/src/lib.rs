@@ -34,6 +34,7 @@ fugo-sass input.scss
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(clippy::all, clippy::cargo, clippy::dbg_macro)]
 #![deny(missing_debug_implementations)]
+#![forbid(unsafe_code)]
 #![allow(
     clippy::use_self,
     // filter isn't fallible

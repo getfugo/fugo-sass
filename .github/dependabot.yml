@@ -1,0 +1,32 @@
+# Dependency updates: https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+# Every pull request has to pass CI like any change, sass-spec's and Bootstrap's comparisons
+# included.
+#
+# No entry for the sass-spec submodule: it is pinned to the specs of dart-sass 1.105.1, the
+# release fugo-sass follows, and moves by hand with it. No entry for fuzz/ either, a separate
+# workspace that CI doesn't build.
+version: 2
+updates:
+  # The versions are in the root Cargo.toml (`[workspace.dependencies]`). One grouped pull
+  # request for the patch bumps and one for the minor bumps, so that a minor bump of a 0.x crate
+  # (a breaking change for Cargo) doesn't hold back the patch and security fixes. Major bumps
+  # come one pull request each.
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      patch:
+        patterns: ["*"]
+        update-types: ["patch"]
+      minor:
+        patterns: ["*"]
+        update-types: ["minor"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]

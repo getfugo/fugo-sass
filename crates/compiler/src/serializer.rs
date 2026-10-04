@@ -25,6 +25,12 @@ mod selectors;
 mod statements;
 mod values;
 
+/// The serializer's output as a string. It only writes the bytes of `str`s and ASCII, so it is
+/// UTF-8.
+fn into_string(buffer: Vec<u8>) -> String {
+    String::from_utf8(buffer).expect("the serializer writes UTF-8")
+}
+
 pub(crate) fn serialize_selector_list(
     list: &SelectorList,
     options: &Options,
@@ -186,8 +192,7 @@ impl<'a> Serializer<'a> {
     }
 
     fn finish_for_expr(self) -> String {
-        // SAFETY: todo
-        unsafe { String::from_utf8_unchecked(self.buffer) }
+        into_string(self.buffer)
     }
 
     pub fn finish(mut self, prev_requires_semicolon: bool) -> String {
@@ -201,8 +206,7 @@ impl<'a> Serializer<'a> {
             self.write_optional_newline();
         }
 
-        // SAFETY: todo
-        let mut as_string = unsafe { String::from_utf8_unchecked(self.buffer) };
+        let mut as_string = into_string(self.buffer);
 
         if is_not_ascii && self.options.is_compressed() && self.options.allows_charset {
             as_string.insert(0, '\u{FEFF}');

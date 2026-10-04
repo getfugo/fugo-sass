@@ -33,8 +33,6 @@ wasm-bindgen = { workspace = true, optional = true }
 # todo: benchmark using phf for global functions
 phf = { workspace = true, features = ["macros"] }
 indexmap.workspace = true
-# todo: do we really need interning for things?
-lasso.workspace = true
 
 [features]
 default = ["random", "custom-builtin-fns"]

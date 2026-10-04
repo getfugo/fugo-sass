@@ -12,6 +12,8 @@
 //! whitespace). An error spec passes when compilation fails: error messages are not compared,
 //! but whether the first `Error:` line matches is counted. Warnings are not compared yet.
 
+#![forbid(unsafe_code)]
+
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
