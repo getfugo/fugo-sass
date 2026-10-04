@@ -1,9 +1,9 @@
 ---
 name: Incorrect Sass Output
-about: `grass` and `dart-sass` differ in output or `grass` reports and error for a valid style sheet
+about: `fugo-sass` and `dart-sass` differ in output or `fugo-sass` reports an error for a valid style sheet
 title: ''
 labels: bug
-assignees: connorskees
+assignees: ''
 
 ---
 
@@ -15,7 +15,7 @@ a {
 ```
 
 <!-- Showing output from both tools is optional, but does help in debugging -->
-**`grass` Output**:
+**`fugo-sass` Output**:
 ```
 a {
   color: red;

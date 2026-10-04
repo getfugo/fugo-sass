@@ -142,6 +142,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 
 [[package]]
+name = "fugo-sass"
+version = "0.14.0"
+dependencies = [
+ "clap",
+ "fugo-sass-compiler",
+ "fugo-sass-macro",
+ "getrandom",
+ "paste",
+ "tempfile",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "fugo-sass-compiler"
+version = "0.14.0"
+dependencies = [
+ "codemap",
+ "indexmap",
+ "lasso",
+ "once_cell",
+ "phf",
+ "rand",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "fugo-sass-macro"
+version = "0.14.0"
+dependencies = [
+ "fugo-sass-compiler",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -151,32 +186,6 @@ dependencies = [
  "js-sys",
  "libc",
  "wasi",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "grass"
-version = "0.13.4"
-dependencies = [
- "clap",
- "getrandom",
- "grass_compiler",
- "include_sass",
- "paste",
- "tempfile",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "grass_compiler"
-version = "0.13.4"
-dependencies = [
- "codemap",
- "indexmap",
- "lasso",
- "once_cell",
- "phf",
- "rand",
  "wasm-bindgen",
 ]
 
@@ -194,15 +203,6 @@ name = "hashbrown"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
-
-[[package]]
-name = "include_sass"
-version = "0.13.4"
-dependencies = [
- "grass_compiler",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "indexmap"

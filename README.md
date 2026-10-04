@@ -1,33 +1,75 @@
-# grass
+# fugo-sass
 
-This crate aims to provide a high level interface for compiling [Sass](https://sass-lang.com/documentation/) into
-plain CSS. It offers a very limited API, currently exposing only 2 functions.
+A [Sass](https://sass-lang.com/documentation/) compiler written purely in Rust: a library
+with a very small API (two functions) and a binary intended as a replacement for the Sass
+command-line executable.
 
-In addition to a library, this crate also includes a binary that is intended to act as an invisible
-replacement to the Sass commandline executable.
+fugo-sass is a fork of [grass](https://github.com/connorskees/grass) by Connor Skees,
+maintained by the [fugo](https://github.com/getfugo/fugo) project, which compiles its sites'
+Sass with it. grass has had no release since 0.13.4 (August 2024). fugo-sass carries on from
+there: 0.14.0 is grass 0.13.4 with the fixes listed in the [CHANGELOG](CHANGELOG.md), and
+later releases follow newer versions of `dart-sass`.
 
-This crate aims to achieve complete feature parity with the `dart-sass` reference
-implementation. A deviation from the `dart-sass` implementation can be considered
-a bug except for in the case of error messages and error spans.
+The goal is complete feature parity with the `dart-sass` reference implementation. A deviation
+from `dart-sass` is a bug, except in the case of error messages and error spans.
 
-[Documentation](https://docs.rs/grass/)  
-[crates.io](https://crates.io/crates/grass)
+[Documentation](https://docs.rs/fugo-sass/)  
+[crates.io](https://crates.io/crates/fugo-sass)
+
+## Usage
+
+```rust
+fn main() -> Result<(), Box<fugo_sass::Error>> {
+    let css = fugo_sass::from_string(
+        "a { b { color: &; } }".to_owned(),
+        &fugo_sass::Options::default(),
+    )?;
+    assert_eq!(css, "a b {\n  color: a b;\n}\n");
+    Ok(())
+}
+```
+
+```bash
+cargo install fugo-sass
+fugo-sass input.scss
+```
+
+## Migrating from grass
+
+The API is grass's. Renaming the dependency keeps every `grass::` path working:
+
+```toml
+[dependencies]
+grass = { package = "fugo-sass", version = "0.14" }
+```
+
+The crates were renamed: `grass` is `fugo-sass` (binary `fugo-sass`), `grass_compiler` is
+`fugo-sass-compiler`, and `include_sass` is `fugo-sass-macro`.
 
 ## Status
 
-`grass` has reached a stage where one can be quite confident in its output. For the average user there should not be perceptible differences from `dart-sass`.
+One can be quite confident in fugo-sass's output. For the average user there should not be
+perceptible differences from `dart-sass`. Every commit is tested against Bootstrap v5.0.2,
+whose output must match `dart-sass`'s byte for byte.
 
-Every commit of `grass` is tested against bootstrap v5.0.2, and every release is tested against the last 2,500 commits of bootstrap's `main` branch.
+fugo-sass currently targets `dart-sass` version `1.54.3`, as grass 0.13.4 did. Work is under
+way to follow the current `dart-sass` release (1.105.1).
 
-That said, there are a number of known missing features and bugs. The rough edges of `grass` largely include `@forward` and more complex uses of `@use`. We support basic usage of these rules, but more advanced features such as `@import`ing modules containing `@forward` with prefixes may not behave as expected.
+There are a number of known missing features and bugs. The rough edges largely include
+`@forward` and more complex uses of `@use`. Basic usage of these rules is supported, but more
+advanced features such as `@import`ing modules containing `@forward` with prefixes may not
+behave as expected. grass tracked its known gaps in
+[connorskees/grass#19](https://github.com/connorskees/grass/issues/19).
 
-All known missing features and bugs are tracked in [#19](https://github.com/connorskees/grass/issues/19).
-
-`grass` is not a drop-in replacement for `libsass` and does not intend to be. If you are upgrading to `grass` from `libsass`, you may have to make modifications to your stylesheets, though these changes should not differ from those you would have to make if upgrading to `dart-sass`.
+fugo-sass is not a drop-in replacement for `libsass` and does not intend to be. If you are
+upgrading from `libsass`, you may have to modify your stylesheets, though these changes should
+not differ from those you would have to make if upgrading to `dart-sass`.
 
 ## Performance
 
-`grass` is benchmarked against `dart-sass` and `sassc` (`libsass`) [here](https://github.com/connorskees/sass-perf). In general, `grass` appears to be ~2x faster than `dart-sass` and ~1.7x faster than `sassc`.
+grass was benchmarked against `dart-sass` and `sassc` (`libsass`)
+[here](https://github.com/connorskees/sass-perf), where it appeared to be ~2x faster than
+`dart-sass` and ~1.7x faster than `sassc`.
 
 ## Cargo Features
 
@@ -41,12 +83,12 @@ All known missing features and bugs are tracked in [#19](https://github.com/conn
 
 ### macro
 
-(disabled by default): enable the macro `grass::include!` for compiling Sass to
+(disabled by default): enable the macro `fugo_sass::include!` for compiling Sass to
 CSS at compile time
 
 ### nightly
 
-(disabled by default): currently only used by `grass::include!` to enable 
+(disabled by default): currently only used by `fugo_sass::include!` to enable
 [proc_macro::tracked_path](https://github.com/rust-lang/rust/issues/99515)
 
 ## Testing
@@ -63,29 +105,24 @@ Having said that, to run the official test suite,
 
 ```bash
 # This script expects node >=v14.14.0. Check version with `node --version`
-git clone https://github.com/connorskees/grass --recursive
-cd grass && cargo b --release
+git clone https://github.com/getfugo/fugo-sass --recursive
+cd fugo-sass && cargo b --release
 cd sass-spec && npm install
-npm run sass-spec -- --impl=dart-sass --command '../target/release/grass'
+npm run sass-spec -- --impl=dart-sass --command '../target/release/fugo-sass'
 ```
 
 The spec runner does not work on Windows.
 
-Using a modified version of the spec runner that ignores warnings and error spans (but does include error messages), `grass` achieves the following results:
-
-```
-2023-07-09
-PASSING: 6230
-FAILING: 545
-TOTAL: 6905
-```
-
-The majority of the failing tests are purely aesthetic, relating to whitespace
-around comments in expanded mode or error messages.
-
 ## Versioning
 
-The minimum supported rust version (MSRV) of `grass` is `1.70.0`. An increase to the MSRV will correspond with a minor version bump. The current MSRV is not a hard minimum, but future bugfix
-versions of `grass` are not guaranteed to work on versions prior to this.
+The minimum supported rust version (MSRV) is `1.70.0`. An increase to the MSRV will correspond
+with a minor version bump. The current MSRV is not a hard minimum, but future bugfix versions are
+not guaranteed to work on versions prior to this.
 
-`grass` currently targets `dart-sass` version `1.54.3`. An increase to this number will correspond to either a minor or bugfix version bump, depending on the changes.
+An increase to the targeted `dart-sass` version will correspond to either a minor or bugfix
+version bump, depending on the changes.
+
+## Licence
+
+MIT ([LICENSE](LICENSE)): Copyright (c) 2020 Connor Skees, and the fugo-sass authors for the
+changes since the fork.

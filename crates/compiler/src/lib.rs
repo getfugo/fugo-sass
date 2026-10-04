@@ -14,11 +14,11 @@ implementation.
 
 ## Use as library
 ```
-# use grass_compiler as grass;
-fn main() -> Result<(), Box<grass::Error>> {
-    let css = grass::from_string(
+# use fugo_sass_compiler as fugo_sass;
+fn main() -> Result<(), Box<fugo_sass::Error>> {
+    let css = fugo_sass::from_string(
         "a { b { color: &; } }".to_owned(),
-        &grass::Options::default().style(grass::OutputStyle::Compressed)
+        &fugo_sass::Options::default().style(fugo_sass::OutputStyle::Compressed)
     )?;
     assert_eq!(css, "a b{color:a b}");
     Ok(())
@@ -27,8 +27,8 @@ fn main() -> Result<(), Box<grass::Error>> {
 
 ## Use as binary
 ```bash
-cargo install grass
-grass input.scss
+cargo install fugo-sass
+fugo-sass input.scss
 ```
 */
 
@@ -222,12 +222,12 @@ fn from_string_with_file_name<P: AsRef<Path>>(
 
 /// Compile CSS from a path
 ///
-/// n.b. `grass` does not currently support files or paths that are not valid UTF-8
+/// n.b. `fugo-sass` does not currently support files or paths that are not valid UTF-8
 ///
 /// ```
-/// # use grass_compiler as grass;
-/// fn main() -> Result<(), Box<grass::Error>> {
-///     let css = grass::from_path("input.scss", &grass::Options::default())?;
+/// # use fugo_sass_compiler as fugo_sass;
+/// fn main() -> Result<(), Box<fugo_sass::Error>> {
+///     let css = fugo_sass::from_path("input.scss", &fugo_sass::Options::default())?;
 ///     Ok(())
 /// }
 /// ```
@@ -239,9 +239,9 @@ pub fn from_path<P: AsRef<Path>>(p: P, options: &Options) -> Result<String> {
 /// Compile CSS from a string
 ///
 /// ```
-/// # use grass_compiler as grass;
-/// fn main() -> Result<(), Box<grass::Error>> {
-///     let css = grass::from_string("a { b { color: &; } }".to_string(), &grass::Options::default())?;
+/// # use fugo_sass_compiler as fugo_sass;
+/// fn main() -> Result<(), Box<fugo_sass::Error>> {
+///     let css = fugo_sass::from_string("a { b { color: &; } }".to_string(), &fugo_sass::Options::default())?;
 ///     assert_eq!(css, "a b {\n  color: a b;\n}\n");
 ///     Ok(())
 /// }

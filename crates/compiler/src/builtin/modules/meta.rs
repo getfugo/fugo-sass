@@ -35,7 +35,7 @@ fn load_css(mut args: ArgumentResult, visitor: &mut Visitor) -> SassResult<()> {
     let mut configuration = Configuration::empty();
 
     if let Some(with) = with {
-        visitor.emit_warning("`grass` does not currently support the $with parameter of load-css. This file will be imported the same way it would using `@import`.", args.span());
+        visitor.emit_warning("`fugo-sass` does not currently support the $with parameter of load-css. This file will be imported the same way it would using `@import`.", args.span());
 
         let mut values = BTreeMap::new();
         for (key, value) in with {

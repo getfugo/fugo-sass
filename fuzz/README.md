@@ -1,5 +1,5 @@
 # Fuzz
-Fuzzing targets for the grass library.
+Fuzzing targets for the fugo-sass library.
 
 ## Installing
 You'll need `cargo-fuzz` for this to work, simply do:

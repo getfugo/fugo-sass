@@ -29,7 +29,7 @@ static FUNCTION_COUNT: AtomicUsize = AtomicUsize::new(0);
 ///
 /// #### Usage
 /// ```rust
-/// use grass_compiler::{
+/// use fugo_sass_compiler::{
 ///     sass_value::{ArgumentResult, SassNumber, Value},
 ///     Builtin, Options, Result as SassResult, Visitor,
 /// };
@@ -45,7 +45,7 @@ static FUNCTION_COUNT: AtomicUsize = AtomicUsize::new(0);
 ///
 /// fn main() {
 ///     let options = Options::default().add_custom_fn("length", Builtin::new(length));
-///     let css = grass_compiler::from_string("a { color: length([a, b]); }", &options).unwrap();
+///     let css = fugo_sass_compiler::from_string("a { color: length([a, b]); }", &options).unwrap();
 ///
 ///     assert_eq!(css, "a {\n  color: 4;\n}\n");
 /// }

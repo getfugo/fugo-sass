@@ -7,6 +7,14 @@
 
 -->
 
+# 0.14.0
+
+The first release of fugo-sass, the fork of grass 0.13.4. The crates were renamed: `grass` is
+`fugo-sass` (binary `fugo-sass`), `grass_compiler` is `fugo-sass-compiler` and `include_sass` is
+`fugo-sass-macro`.
+
+- fix overflow in `string.split(..)` (connorskees/grass#102, unreleased in grass)
+
 # 0.13.4
 
 - support `...$keys` argument to `map-has-key(..)`/`map.has-key(..)`

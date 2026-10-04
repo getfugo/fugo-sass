@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, collections::HashSet, path::PathBuf};
 
-use grass_compiler::StdFs;
+use fugo_sass_compiler::StdFs;
 use proc_macro::TokenStream;
 #[cfg(not(feature = "nightly"))]
 use quote::format_ident;
@@ -13,10 +13,10 @@ use quote::__private::TokenStream as TokenStream2;
 #[derive(Debug)]
 struct FileTracker<'a> {
     files: RefCell<HashSet<PathBuf>>,
-    fs: &'a dyn grass_compiler::Fs,
+    fs: &'a dyn fugo_sass_compiler::Fs,
 }
 
-impl<'a> grass_compiler::Fs for FileTracker<'a> {
+impl<'a> fugo_sass_compiler::Fs for FileTracker<'a> {
     fn is_dir(&self, path: &std::path::Path) -> bool {
         #[cfg(feature = "nightly")]
         if let Ok(p) = std::fs::canonicalize(path) {
@@ -89,7 +89,7 @@ fn finish(css: String, files: &HashSet<PathBuf>) -> TokenStream {
 pub fn include_sass(item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as LitStr);
 
-    let options = grass_compiler::Options::default();
+    let options = fugo_sass_compiler::Options::default();
 
     let fs = FileTracker {
         files: RefCell::new(HashSet::new()),
@@ -98,11 +98,11 @@ pub fn include_sass(item: TokenStream) -> TokenStream {
 
     let value = input.value();
 
-    let css = match grass_compiler::from_path(
+    let css = match fugo_sass_compiler::from_path(
         value,
         &options
             .fs(&fs)
-            .style(grass_compiler::OutputStyle::Compressed),
+            .style(fugo_sass_compiler::OutputStyle::Compressed),
     ) {
         Ok(css) => css,
         Err(e) => {

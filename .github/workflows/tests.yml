@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 jobs:
@@ -73,12 +73,12 @@ jobs:
 
       - name: Verify unchanged output
         run: |
-          ./target/debug/grass bootstrap/scss/bootstrap.scss > grass-output.css
+          ./target/debug/fugo-sass bootstrap/scss/bootstrap.scss > fugo-sass-output.css
           ./dart-sass/sass bootstrap/scss/bootstrap.scss > dart-sass-output.css
 
-          if [[ $(diff -u grass-output.css dart-sass-output.css) ]]; then
+          if [[ $(diff -u fugo-sass-output.css dart-sass-output.css) ]]; then
               echo "Differences found"
-              diff -u grass-output.css dart-sass-output.css
+              diff -u fugo-sass-output.css dart-sass-output.css
               exit 1
           else
               echo "No differences found"
@@ -105,4 +105,4 @@ jobs:
   #         sudo gem install bundler
   #         cd sass-spec && bundler install
   #     - name: Run Sass spec
-  #       run: ./sass-spec/sass-spec.rb -c './target/release/grass'
+  #       run: ./sass-spec/sass-spec.rb -c './target/release/fugo-sass'

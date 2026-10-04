@@ -1,15 +1,15 @@
 [package]
-name = "include_sass"
-version = "0.13.4"
+name = "fugo-sass-macro"
+version = "0.14.0"
 edition = "2021"
-description = "Internal implementation of the grass::include! macro"
+description = "The proc macro behind fugo_sass::include!"
 readme = "../../README.md"
 license = "MIT"
 categories = ["web-programming"]
 keywords = ["scss", "sass", "css", "web"]
-repository = "https://github.com/connorskees/grass"
-authors = ["Connor Skees <39542938+ConnorSkees@users.noreply.github.com>"]
-include = ["src", "Cargo.toml", "../README.md", "../CHANGELOG.md", "../LICENSE"]
+repository = "https://github.com/getfugo/fugo-sass"
+authors = ["Connor Skees <39542938+ConnorSkees@users.noreply.github.com>", "The fugo-sass authors"]
+include = ["src", "Cargo.toml", "LICENSE"]
 rust-version = "1.70"
 
 [lib]
@@ -17,7 +17,7 @@ proc-macro = true
 
 [dependencies]
 syn = { version = "2", default-features = false }
-grass_compiler = { path = "../compiler", version = "=0.13.4" }
+fugo-sass-compiler = { path = "../compiler", version = "=0.14.0" }
 quote = { version = "1.0.23", default-features = false }
 
 [features]

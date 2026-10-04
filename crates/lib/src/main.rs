@@ -6,7 +6,7 @@ use std::{
 
 use clap::{builder::PossibleValue, value_parser, Arg, ArgAction, Command, ValueEnum};
 
-use grass::{from_path, from_string, Options, OutputStyle};
+use fugo_sass::{from_path, from_string, Options, OutputStyle};
 
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub enum Style {
@@ -47,7 +47,7 @@ impl ValueEnum for SourceMapUrls {
 }
 
 fn cli() -> Command {
-    Command::new("grass")
+    Command::new("fugo-sass")
         .version(env!("CARGO_PKG_VERSION"))
         .about("A Sass compiler written purely in Rust")
         .disable_version_flag(true)

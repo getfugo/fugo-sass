@@ -1,18 +1,18 @@
 [package]
-name = "grass_compiler"
-version = "0.13.4"
+name = "fugo-sass-compiler"
+version = "0.14.0"
 edition = "2021"
-description = "Internal implementation of the grass compiler"
+description = "The compiler behind fugo-sass, a Sass compiler written in Rust: its internals, with frequent breaking changes"
 readme = "README.md"
 license = "MIT"
 categories = ["web-programming"]
 keywords = ["scss", "sass", "css", "web"]
-repository = "https://github.com/connorskees/grass"
-authors = ["Connor Skees <39542938+ConnorSkees@users.noreply.github.com>"]
+repository = "https://github.com/getfugo/fugo-sass"
+authors = ["Connor Skees <39542938+ConnorSkees@users.noreply.github.com>", "The fugo-sass authors"]
 rust-version = "1.70"
 
 [lib]
-name = "grass_compiler"
+name = "fugo_sass_compiler"
 path = "src/lib.rs"
 # crate-type = ["cdylib", "rlib"]
 bench = false

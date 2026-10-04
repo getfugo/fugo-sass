@@ -14,10 +14,10 @@ implementation.
 
 ## Use as library
 ```
-fn main() -> Result<(), Box<grass::Error>> {
-    let css = grass::from_string(
+fn main() -> Result<(), Box<fugo_sass::Error>> {
+    let css = fugo_sass::from_string(
         "a { b { color: &; } }".to_owned(),
-        &grass::Options::default()
+        &fugo_sass::Options::default()
     )?;
     assert_eq!(css, "a b {\n  color: a b;\n}\n");
     Ok(())
@@ -26,8 +26,8 @@ fn main() -> Result<(), Box<grass::Error>> {
 
 ## Use as binary
 ```bash
-cargo install grass
-grass input.scss
+cargo install fugo-sass
+fugo-sass input.scss
 ```
 */
 
@@ -65,21 +65,21 @@ grass input.scss
     unknown_lints,
 )]
 
-pub use grass_compiler::{
+pub use fugo_sass_compiler::{
     from_path, from_string, Error, ErrorKind, Fs, InputSyntax, Logger, NullFs, NullLogger, Options,
     OutputStyle, Result, StdFs, StdLogger,
 };
 
 /// Include CSS in your binary at compile time from a Sass source file
 ///
-/// `static CSS: &str = grass::include!("../static/_index.scss");`
+/// `static CSS: &str = fugo_sass::include!("../static/_index.scss");`
 ///
 /// This requires the `"macro"` feature, which is not enabled by default.
 ///
-/// By default `grass` will track files using [`include_str!`]. This allows incremental
+/// By default `fugo-sass` will track files using [`include_str!`]. This allows incremental
 /// compilation to be updated when any Sass files are modified.
 ///
-/// If compiling with a nightly version of rust, `grass` can make use of
+/// If compiling with a nightly version of rust, `fugo-sass` can make use of
 /// [proc_macro::tracked_path](https://github.com/rust-lang/rust/issues/99515)
 /// in order to force incremental recompilation, which is more robust and potentially
 /// faster. This is enabled by the `"nightly"` feature.
@@ -93,7 +93,7 @@ pub use grass_compiler::{
 #[cfg_attr(doc_cfg, doc(cfg(feature = "macro")))]
 macro_rules! include {
     ($path:literal) => {
-        $crate::__internal::include_sass::include_sass!($path);
+        $crate::__internal::fugo_sass_macro::include_sass!($path);
     };
 }
 
@@ -101,5 +101,5 @@ macro_rules! include {
 #[cfg(feature = "macro")]
 pub mod __internal {
     #[doc(hidden)]
-    pub use include_sass;
+    pub use fugo_sass_macro;
 }

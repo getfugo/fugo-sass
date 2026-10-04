@@ -22,7 +22,7 @@ dhat*
 *.cmd
 *.exe
 
-# common Sass frameworks that may wish to live alongside grass for testing
+# common Sass frameworks that may wish to live alongside fugo-sass for testing
 susy
 bulma*
 bootstrap*

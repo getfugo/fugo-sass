@@ -10,7 +10,7 @@ use codemap::{Span, SpanLoc};
 
 pub type SassResult<T> = Result<T, Box<SassError>>;
 
-/// `SassError`s can be either a structured error specific to `grass` or an
+/// `SassError`s can be either a structured error specific to `fugo-sass` or an
 /// `io::Error`.
 ///
 /// In the former case, the best way to interact with the error is to simply print

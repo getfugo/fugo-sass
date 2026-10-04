@@ -5,8 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use grass::{Fs, Logger};
-use grass_compiler::codemap::SpanLoc;
+use fugo_sass::{Fs, Logger};
+use fugo_sass_compiler::codemap::SpanLoc;
 
 #[macro_export]
 macro_rules! test {
@@ -15,7 +15,7 @@ macro_rules! test {
         #[test]
         #[allow(non_snake_case)]
         fn $func() {
-            let sass = grass::from_string($input.to_string(), &$options)
+            let sass = fugo_sass::from_string($input.to_string(), &$options)
                 .expect(concat!("failed to parse on ", $input));
             assert_eq!(
                 String::from($output),
@@ -27,7 +27,7 @@ macro_rules! test {
         test!(@base $(#[$attr])* $func, $input, $output, $options);
     };
     ($( #[$attr:meta] ),*$func:ident, $input:expr, $output:expr) => {
-        test!(@base $(#[$attr])* $func, $input, $output, grass::Options::default());
+        test!(@base $(#[$attr])* $func, $input, $output, fugo_sass::Options::default());
     };
 }
 
@@ -40,7 +40,7 @@ macro_rules! error {
         #[test]
         #[allow(non_snake_case)]
         fn $func() {
-            match grass::from_string($input.to_string(), &$options) {
+            match fugo_sass::from_string($input.to_string(), &$options) {
                 Ok(..) => panic!("did not fail"),
                 Err(e) => assert_eq!($err, e.to_string()
                                                 .chars()
@@ -52,7 +52,7 @@ macro_rules! error {
         }
     };
     ($( #[$attr:meta] ),*$func:ident, $input:expr, $err:expr) => {
-        error!(@base $(#[$attr])* $func, $input, $err, grass::Options::default());
+        error!(@base $(#[$attr])* $func, $input, $err, fugo_sass::Options::default());
     };
     ($( #[$attr:meta] ),*$func:ident, $input:expr, $err:expr, $options:expr) => {
         error!(@base $(#[$attr])* $func, $input, $err, $options);
@@ -102,7 +102,7 @@ macro_rules! tempfile {
 #[macro_export]
 macro_rules! assert_err {
     ($err:literal, $input:expr) => {
-        match grass::from_string($input.to_string(), &grass::Options::default()) {
+        match fugo_sass::from_string($input.to_string(), &fugo_sass::Options::default()) {
             Ok(..) => panic!("did not fail"),
             Err(e) => assert_eq!(
                 $err,
@@ -115,7 +115,7 @@ macro_rules! assert_err {
         }
     };
     ($input:expr, $err:expr, $options:expr) => {
-        match grass::from_string($input.to_string(), &$options) {
+        match fugo_sass::from_string($input.to_string(), &$options) {
             Ok(..) => panic!("did not fail"),
             Err(e) => assert_eq!(
                 $err,
