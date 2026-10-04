@@ -557,3 +557,58 @@ error!(
     "#,
     "Error: @forward rules must be written before any other rules."
 );
+
+#[test]
+fn hidden_mixin_is_not_forwarded() {
+    let mut fs = TestFs::new();
+
+    fs.add_file("_midstream.scss", r#"@forward "upstream" hide c;"#);
+    fs.add_file("_upstream.scss", r#"@mixin c {a: b}"#);
+
+    let input = "@use \"midstream\" as *;\na {\n  @include c;\n}\n";
+
+    assert_eq!(
+        "Error: Undefined mixin.",
+        fugo_sass::from_string(input.to_string(), &fugo_sass::Options::default().fs(&fs))
+            .unwrap_err()
+            .to_string()
+            .lines()
+            .next()
+            .unwrap()
+    );
+}
+
+#[test]
+fn prefixed_member_is_not_hidden_by_its_unprefixed_name() {
+    let mut fs = TestFs::new();
+
+    fs.add_file("_midstream.scss", r#"@forward "upstream" as b-* hide a;"#);
+    fs.add_file("_upstream.scss", r#"@mixin a {c {d: e}}"#);
+
+    let input = "@use \"midstream\";\n@include midstream.b-a;\n";
+
+    assert_eq!(
+        "c {\n  d: e;\n}\n",
+        &fugo_sass::from_string(input.to_string(), &fugo_sass::Options::default().fs(&fs))
+            .expect(input)
+    );
+}
+
+#[test]
+fn shown_function_is_the_only_one_forwarded() {
+    let mut fs = TestFs::new();
+
+    fs.add_file("_midstream.scss", r#"@forward "upstream" show c;"#);
+    fs.add_file(
+        "_upstream.scss",
+        "@function c() {@return c}\n@function d() {@return d}\n",
+    );
+
+    let input = "@use \"sass:meta\";\n@use \"midstream\";\na {\n  b: meta.module-functions(midstream) == (\"c\": meta.get-function(c, $module: midstream));\n}\n";
+
+    assert_eq!(
+        "a {\n  b: true;\n}\n",
+        &fugo_sass::from_string(input.to_string(), &fugo_sass::Options::default().fs(&fs))
+            .expect(input)
+    );
+}

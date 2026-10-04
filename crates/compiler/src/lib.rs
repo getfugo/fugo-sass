@@ -87,7 +87,7 @@ pub mod sass_value {
         unit::{ComplexUnit, Unit},
         value::{
             ArgList, CalculationArg, CalculationName, Number, SassCalculation, SassFunction,
-            SassMap, SassNumber, Value,
+            SassMap, SassMixin, SassNumber, Value,
         },
     };
 }

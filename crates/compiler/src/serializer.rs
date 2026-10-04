@@ -15,7 +15,7 @@ use crate::{
     utils::hex_char_for,
     value::{
         fuzzy_as_int, fuzzy_equals, ArgList, CalculationArg, CalculationName, SassCalculation,
-        SassFunction, SassMap, SassNumber, Value,
+        SassFunction, SassMap, SassMixin, SassNumber, Value,
     },
     Options,
 };
@@ -1127,6 +1127,27 @@ impl<'a> Serializer<'a> {
         Ok(())
     }
 
+    fn visit_mixin_ref(&mut self, mixin: &SassMixin, span: Span) -> SassResult<()> {
+        if !self.inspect {
+            let mut inspected = Self::new(self.options, self.map, true, span);
+            inspected.visit_mixin_ref(mixin, span)?;
+            return Err((
+                format!(
+                    "{} isn't a valid CSS value.",
+                    String::from_utf8(inspected.buffer).unwrap()
+                ),
+                span,
+            )
+                .into());
+        }
+
+        self.buffer.extend_from_slice(b"get-mixin(");
+        self.visit_quoted_string(false, &mixin.name());
+        self.buffer.push(b')');
+
+        Ok(())
+    }
+
     fn visit_arglist(&mut self, arglist: &ArgList, span: Span) -> SassResult<()> {
         self.visit_list(&arglist.elems, ListSeparator::Comma, Brackets::None, span)
     }
@@ -1146,6 +1167,7 @@ impl<'a> Serializer<'a> {
             }
             Value::Map(map) => self.visit_map(map, span)?,
             Value::FunctionRef(func) => self.visit_function_ref(func, span)?,
+            Value::MixinRef(mixin) => self.visit_mixin_ref(mixin, span)?,
             Value::String(s, QuoteKind::Quoted) => self.visit_quoted_string(false, s),
             Value::String(s, QuoteKind::None) => self.visit_unquoted_string(s),
             Value::ArgList(arglist) => self.visit_arglist(arglist, span)?,

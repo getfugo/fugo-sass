@@ -13,7 +13,7 @@ use crate::{
     utils::{
         BaseMapView, LimitedMapView, MapView, MergedMapView, PrefixedMapView, PublicMemberMapView,
     },
-    value::{SassFunction, SassMap, Value},
+    value::{SassFunction, SassMap, SassMixin, Value},
 };
 
 use super::builtin_imports::QuoteKind;
@@ -157,12 +157,19 @@ impl ForwardedModule {
     ) -> Arc<dyn MapView<Value = T>> {
         debug_assert!(safelist.is_none() || blocklist.is_none());
 
+        let blocklist = blocklist.filter(|blocklist| !blocklist.is_empty());
         if prefix.is_none() && safelist.is_none() && blocklist.is_none() {
             return map;
         }
 
         if let Some(prefix) = prefix {
             map = Arc::new(PrefixedMapView(map, prefix.to_owned()));
+        }
+
+        if let Some(safelist) = safelist {
+            map = Arc::new(LimitedMapView::safelist(map, safelist));
+        } else if let Some(blocklist) = blocklist {
+            map = Arc::new(LimitedMapView::blocklist(map, blocklist));
         }
 
         map
@@ -413,10 +420,22 @@ impl Module {
         }
     }
 
-    pub fn insert_builtin_mixin(&mut self, name: &'static str, mixin: BuiltinMixin) {
+    pub fn insert_builtin_mixin(
+        &mut self,
+        name: &'static str,
+        mixin: BuiltinMixin,
+        accepts_content: bool,
+    ) {
         let scope = self.scope();
 
-        scope.mixins.insert(name.into(), Mixin::Builtin(mixin));
+        scope.mixins.insert(
+            name.into(),
+            Mixin::Builtin {
+                name,
+                mixin,
+                accepts_content,
+            },
+        );
     }
 
     pub fn insert_builtin_var(&mut self, name: &'static str, value: Value) {
@@ -479,6 +498,23 @@ impl Module {
                     (
                         Value::String(key.to_string(), QuoteKind::Quoted).span(span),
                         Value::FunctionRef(Box::new(value)),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    pub fn mixins(&self, span: Span) -> SassMap {
+        SassMap::new_with(
+            self.scope()
+                .mixins
+                .iter()
+                .into_iter()
+                .filter(|(key, _)| !key.as_str().starts_with('-'))
+                .map(|(key, value)| {
+                    (
+                        Value::String(key.to_string(), QuoteKind::Quoted).span(span),
+                        Value::MixinRef(Box::new(SassMixin(value))),
                     )
                 })
                 .collect::<Vec<_>>(),

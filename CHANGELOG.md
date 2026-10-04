@@ -68,6 +68,15 @@
 - custom properties that span lines keep their lines, reindented to the output (`--a: (b\n    c)`),
   and are folded onto one line in compressed output, as `dart-sass` writes them; they were always
   folded
+- first-class mixins (`dart-sass` 1.69): `meta.get-mixin()`, `meta.module-mixins()`,
+  `meta.accepts-content()` and the `meta.apply()` mixin, which passes on its content block; mixin
+  references (`Value::MixinRef`, `SassMixin`) are equal when they are the same mixin, inspect as
+  `get-mixin("a")` and have the type `mixin`. `sass:meta` lists its members in `dart-sass`'s order
+- `@forward ... show` and `hide` filter the forwarded members; they forwarded every member. A
+  prefix applies before them (`as b-* hide a` keeps `b-a`)
+- `meta.function-exists()` and `meta.mixin-exists()` find members of modules used with `as *`
+- module namespaces keep their underscores, as in `dart-sass`: `a_b` and `a-b` are different
+  namespaces; a `$module` that isn't a string is "neither a string nor a module reference"
 
 # 0.14.0
 

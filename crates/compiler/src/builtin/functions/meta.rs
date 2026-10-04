@@ -119,22 +119,12 @@ pub(crate) fn global_variable_exists(
             .0,
     );
 
-    let module = match args.default_arg(1, "module", Value::Null) {
-        Value::String(s, _) => Some(s),
-        Value::Null => None,
-        v => {
-            return Err((
-                format!("$module: {} is not a string.", v.inspect(args.span())?),
-                args.span(),
-            )
-                .into())
-        }
-    };
+    let module = nullable_module_name(args.default_arg(1, "module", Value::Null), args.span())?;
 
     Ok(Value::bool(if let Some(module_name) = module {
         (*(*visitor.env.modules)
             .borrow()
-            .get(module_name.into(), args.span())?)
+            .get(Identifier::namespace(&module_name), args.span())?)
         .borrow()
         .var_exists(name)
     } else {
@@ -150,22 +140,12 @@ pub(crate) fn mixin_exists(mut args: ArgumentResult, visitor: &mut Visitor) -> S
             .0,
     );
 
-    let module = match args.default_arg(1, "module", Value::Null) {
-        Value::String(s, _) => Some(s),
-        Value::Null => None,
-        v => {
-            return Err((
-                format!("$module: {} is not a string.", v.inspect(args.span())?),
-                args.span(),
-            )
-                .into())
-        }
-    };
+    let module = nullable_module_name(args.default_arg(1, "module", Value::Null), args.span())?;
 
     Ok(Value::bool(if let Some(module_name) = module {
         (*(*visitor.env.modules)
             .borrow()
-            .get(module_name.into(), args.span())?)
+            .get(Identifier::namespace(&module_name), args.span())?)
         .borrow()
         .mixin_exists(name)
     } else {
@@ -185,22 +165,12 @@ pub(crate) fn function_exists(
             .0,
     );
 
-    let module = match args.default_arg(1, "module", Value::Null) {
-        Value::String(s, _) => Some(s),
-        Value::Null => None,
-        v => {
-            return Err((
-                format!("$module: {} is not a string.", v.inspect(args.span())?),
-                args.span(),
-            )
-                .into())
-        }
-    };
+    let module = nullable_module_name(args.default_arg(1, "module", Value::Null), args.span())?;
 
     Ok(Value::bool(if let Some(module_name) = module {
         (*(*visitor.env.modules)
             .borrow()
-            .get(module_name.into(), args.span())?)
+            .get(Identifier::namespace(&module_name), args.span())?)
         .borrow()
         .fn_exists(name)
     } else {
@@ -247,7 +217,7 @@ pub(crate) fn get_function(mut args: ArgumentResult, visitor: &mut Visitor) -> S
         visitor.env.get_fn(
             name,
             Some(Spanned {
-                node: module_name.into(),
+                node: Identifier::namespace(&module_name),
                 span: args.span(),
             }),
         )?
@@ -355,7 +325,62 @@ pub(crate) fn declare(f: &mut GlobalFunctionMap) {
     f.insert("mixin-exists", Builtin::new(mixin_exists));
     f.insert("function-exists", Builtin::new(function_exists));
     f.insert("get-function", Builtin::new(get_function));
+    f.insert("get-mixin", Builtin::new(get_mixin));
     f.insert("call", Builtin::new(call));
     f.insert("content-exists", Builtin::new(content_exists));
     f.insert("keywords", Builtin::new(keywords));
+}
+
+/// The module name that `$module` gives, or `None` for null.
+pub(crate) fn nullable_module_name(value: Value, span: Span) -> SassResult<Option<String>> {
+    match value {
+        Value::String(s, _) => Ok(Some(s)),
+        Value::Null => Ok(None),
+        v => Err((
+            format!(
+                "$module: {} is neither a string nor a module reference.",
+                v.inspect(span)?
+            ),
+            span,
+        )
+            .into()),
+    }
+}
+
+pub(crate) fn get_mixin(mut args: ArgumentResult, visitor: &mut Visitor) -> SassResult<Value> {
+    args.max_args(2)?;
+    let span = args.span();
+    let name_value = args.get_err(0, "name")?;
+    let name = match &name_value {
+        Value::String(s, _) => Identifier::from(s.as_str()),
+        v => {
+            return Err((
+                format!("$name: {} is not a string.", v.inspect(span)?),
+                span,
+            )
+                .into())
+        }
+    };
+    let module = nullable_module_name(args.default_arg(1, "module", Value::Null), span)?;
+
+    let mixin = match module {
+        Some(module) => (*(*visitor.env.modules)
+            .borrow()
+            .get(Identifier::namespace(&module), span)?)
+        .borrow()
+        .get_mixin_no_err(name),
+        None => visitor
+            .env
+            .get_mixin(Spanned { node: name, span }, None)
+            .ok(),
+    };
+
+    match mixin {
+        Some(mixin) => Ok(Value::MixinRef(Box::new(SassMixin(mixin)))),
+        None => Err((
+            format!("Mixin not found: {}", name_value.inspect(span)?),
+            span,
+        )
+            .into()),
+    }
 }

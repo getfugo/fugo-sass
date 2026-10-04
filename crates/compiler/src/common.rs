@@ -136,6 +136,12 @@ impl Identifier {
         }
     }
 
+    /// A module namespace. Unlike other identifiers, namespaces keep their underscores: `a_b` and
+    /// `a-b` are different namespaces.
+    pub(crate) fn namespace(s: &str) -> Self {
+        Identifier(InternedString::get_or_intern(s))
+    }
+
     pub fn is_public(&self) -> bool {
         !self.as_str().starts_with('-')
     }

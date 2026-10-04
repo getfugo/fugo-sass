@@ -122,7 +122,14 @@ impl<V: fmt::Debug + Clone, T: MapView<Value = V> + Clone> MapView for Unprefixe
     }
 
     fn iter(&self) -> Vec<(Identifier, Self::Value)> {
-        unimplemented!()
+        self.0
+            .iter()
+            .into_iter()
+            .filter_map(|(key, value)| {
+                let key = key.as_str().strip_prefix(&self.1)?;
+                Some((Identifier::from(key), value))
+            })
+            .collect()
     }
 }
 
@@ -166,13 +173,16 @@ impl<V: fmt::Debug + Clone, T: MapView<Value = V> + Clone> MapView for PrefixedM
         self.0
             .keys()
             .into_iter()
-            .filter(|key| key.as_str().starts_with(&self.1))
             .map(|key| Identifier::from(format!("{}{}", self.1, key)))
             .collect()
     }
 
     fn iter(&self) -> Vec<(Identifier, Self::Value)> {
-        unimplemented!()
+        self.0
+            .iter()
+            .into_iter()
+            .map(|(key, value)| (Identifier::from(format!("{}{}", self.1, key)), value))
+            .collect()
     }
 }
 
@@ -250,7 +260,10 @@ impl<V: fmt::Debug + Clone, T: MapView<Value = V> + Clone> MapView for LimitedMa
     }
 
     fn iter(&self) -> Vec<(Identifier, Self::Value)> {
-        unimplemented!()
+        self.1
+            .iter()
+            .filter_map(|&key| self.0.get(key).map(|value| (key, value)))
+            .collect()
     }
 }
 

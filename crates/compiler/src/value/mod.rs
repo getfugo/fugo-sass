@@ -19,6 +19,7 @@ pub use calculation::*;
 pub use map::SassMap;
 pub use number::*;
 pub use sass_function::{SassFunction, UserDefinedFunction};
+pub use sass_mixin::SassMixin;
 pub(crate) use sass_number::conversion_factor;
 pub use sass_number::SassNumber;
 
@@ -27,6 +28,7 @@ mod calculation;
 mod map;
 mod number;
 mod sass_function;
+mod sass_mixin;
 mod sass_number;
 
 #[derive(Debug, Clone)]
@@ -42,6 +44,8 @@ pub enum Value {
     ArgList(ArgList),
     /// Returned by `get-function()`
     FunctionRef(Box<SassFunction>),
+    /// Returned by `get-mixin()`
+    MixinRef(Box<SassMixin>),
     Calculation(SassCalculation),
 }
 
@@ -85,6 +89,7 @@ impl PartialEq for Value {
                     false
                 }
             }
+            Value::MixinRef(mixin1) => matches!(other, Value::MixinRef(mixin2) if mixin1 == mixin2),
             Value::Map(map1) => {
                 if let Value::Map(map2) = other {
                     map1 == map2
@@ -269,6 +274,7 @@ impl Value {
             Value::Dimension(..) => "number",
             Value::List(..) => "list",
             Value::FunctionRef(..) => "function",
+            Value::MixinRef(..) => "mixin",
             Value::ArgList(..) => "arglist",
             Value::True | Value::False => "bool",
             Value::Null => "null",
