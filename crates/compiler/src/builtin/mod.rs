@@ -24,7 +24,7 @@ mod builtin_imports {
         error::SassResult,
         evaluate::Visitor,
         unit::Unit,
-        value::{CalculationArg, Number, SassFunction, SassMap, SassNumber, Value},
+        value::{CalculationArg, Number, SassFunction, SassMap, SassMixin, SassNumber, Value},
         Options,
     };
 

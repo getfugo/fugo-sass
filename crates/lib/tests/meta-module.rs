@@ -8,7 +8,7 @@ mod macros;
 test!(
     module_functions_builtin,
     "@use 'sass:meta';\na {\n  color: inspect(meta.module-functions(meta));\n}\n",
-    "a {\n  color: (\"feature-exists\": get-function(\"feature-exists\"), \"inspect\": get-function(\"inspect\"), \"type-of\": get-function(\"type-of\"), \"keywords\": get-function(\"keywords\"), \"global-variable-exists\": get-function(\"global-variable-exists\"), \"variable-exists\": get-function(\"variable-exists\"), \"function-exists\": get-function(\"function-exists\"), \"mixin-exists\": get-function(\"mixin-exists\"), \"content-exists\": get-function(\"content-exists\"), \"module-variables\": get-function(\"module-variables\"), \"module-functions\": get-function(\"module-functions\"), \"get-function\": get-function(\"get-function\"), \"call\": get-function(\"call\"), \"calc-args\": get-function(\"calc-args\"), \"calc-name\": get-function(\"calc-name\"));\n}\n"
+    "a {\n  color: (\"feature-exists\": get-function(\"feature-exists\"), \"inspect\": get-function(\"inspect\"), \"type-of\": get-function(\"type-of\"), \"keywords\": get-function(\"keywords\"), \"calc-name\": get-function(\"calc-name\"), \"calc-args\": get-function(\"calc-args\"), \"accepts-content\": get-function(\"accepts-content\"), \"global-variable-exists\": get-function(\"global-variable-exists\"), \"variable-exists\": get-function(\"variable-exists\"), \"function-exists\": get-function(\"function-exists\"), \"mixin-exists\": get-function(\"mixin-exists\"), \"content-exists\": get-function(\"content-exists\"), \"module-variables\": get-function(\"module-variables\"), \"module-functions\": get-function(\"module-functions\"), \"module-mixins\": get-function(\"module-mixins\"), \"get-function\": get-function(\"get-function\"), \"get-mixin\": get-function(\"get-mixin\"), \"call\": get-function(\"call\"));\n}\n"
 );
 test!(
     module_variables_builtin,
@@ -108,3 +108,27 @@ fn module_members_and_keywords_in_definition_order() {
             .expect(input)
     );
 }
+test!(
+    get_mixin_and_apply,
+    "@use 'sass:meta';\n@mixin a($b, $c: d) {\n  e: $b $c;\n  @content;\n}\nf {\n  @include meta.apply(meta.get-mixin(a), g, $c: h) {\n    i: j;\n  }\n}\n",
+    "f {\n  e: g h;\n  i: j;\n}\n"
+);
+test!(
+    accepts_content,
+    "@use 'sass:meta';\n@mixin a {\n  @content;\n}\n@mixin b {}\nc {\n  d: meta.accepts-content(meta.get-mixin(a)) meta.accepts-content(meta.get-mixin(b));\n}\n",
+    "c {\n  d: true false;\n}\n"
+);
+test!(
+    mixin_reference_inspect_and_type,
+    "@use 'sass:meta';\n@mixin a {}\nb {\n  c: meta.inspect(meta.get-mixin(a)) meta.type-of(meta.get-mixin(a));\n}\n",
+    "b {\n  c: get-mixin(\"a\") mixin;\n}\n"
+);
+error!(
+    mixin_reference_is_not_css,
+    "@use 'sass:meta';\n@mixin a {}\nb {\n  c: meta.get-mixin(a);\n}\n",
+    "Error: get-mixin(\"a\") isn't a valid CSS value."
+);
+error!(
+    get_mixin_not_found,
+    "@use 'sass:meta';\na {\n  b: meta.get-mixin(c);\n}\n", "Error: Mixin not found: c"
+);

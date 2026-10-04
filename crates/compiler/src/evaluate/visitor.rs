@@ -85,6 +85,16 @@ impl UserDefinedCallable for AstMixin {
     }
 }
 
+impl UserDefinedCallable for Arc<AstMixin> {
+    fn name(&self) -> Identifier {
+        self.name
+    }
+
+    fn arguments(&self) -> &ArgumentDeclaration {
+        &self.args
+    }
+}
+
 impl UserDefinedCallable for Arc<CallableContentBlock> {
     fn name(&self) -> Identifier {
         Identifier::from("@content")
@@ -768,7 +778,7 @@ impl<'a> Visitor<'a> {
         let namespace = use_rule
             .namespace
             .as_ref()
-            .map(|s| Identifier::from(s.trim_start_matches("sass:")));
+            .map(|s| Identifier::namespace(s.trim_start_matches("sass:")));
 
         self.load_module(
             &use_rule.url,
@@ -1853,61 +1863,80 @@ impl<'a> Visitor<'a> {
             .env
             .get_mixin(include_stmt.name, include_stmt.namespace)?;
 
-        match mixin {
-            Mixin::Builtin(mixin) => {
-                if include_stmt.content.is_some() {
-                    return Err(("Mixin doesn't accept a content block.", include_stmt.span).into());
-                }
+        let AstInclude {
+            args,
+            content,
+            name,
+            span,
+            ..
+        } = include_stmt;
 
-                let args = self.eval_args(include_stmt.args, include_stmt.name.span)?;
-                mixin(args, self)?;
+        let content = content.map(|content| {
+            Arc::new(CallableContentBlock {
+                content,
+                env: self.env.new_closure(),
+            })
+        });
 
-                Ok(None)
-            }
-            Mixin::UserDefined(mixin, env) => {
-                if include_stmt.content.is_some() && !mixin.has_content {
-                    return Err(("Mixin doesn't accept a content block.", include_stmt.span).into());
-                }
+        self.apply_mixin(
+            mixin,
+            content,
+            MaybeEvaledArguments::Invocation(args),
+            name.span,
+            span,
+        )?;
 
-                let AstInclude { args, content, .. } = include_stmt;
+        Ok(None)
+    }
 
-                let old_in_mixin = self.flags.in_mixin();
-                self.flags.set(ContextFlags::IN_MIXIN, true);
-
-                let callable_content = content.map(|c| {
-                    Arc::new(CallableContentBlock {
-                        content: c,
-                        env: self.env.new_closure(),
-                    })
-                });
-
-                self.run_user_defined_callable::<_, (), _>(
-                    MaybeEvaledArguments::Invocation(args),
-                    mixin,
-                    &env,
-                    include_stmt.name.span,
-                    |mixin, visitor| {
-                        visitor.with_content(callable_content, |visitor| {
-                            for stmt in mixin.body {
-                                let result = visitor.visit_stmt(stmt)?;
-                                debug_assert!(result.is_none());
-                            }
-                            Ok(())
-                        })
-                    },
-                )?;
-
-                self.flags.set(ContextFlags::IN_MIXIN, old_in_mixin);
-
-                Ok(None)
-            }
+    /// Runs `mixin` with `arguments` and `content`, for `@include` and `meta.apply()` (dart-sass's
+    /// `_applyMixin`). `span` is the invocation's, `include_span` the whole rule's.
+    pub(crate) fn apply_mixin(
+        &mut self,
+        mixin: Mixin,
+        content: Option<Arc<CallableContentBlock>>,
+        arguments: MaybeEvaledArguments,
+        span: Span,
+        include_span: Span,
+    ) -> SassResult<()> {
+        if content.is_some() && !mixin.accepts_content() {
+            return Err(("Mixin doesn't accept a content block.", include_span).into());
         }
+
+        let old_in_mixin = self.flags.in_mixin();
+        self.flags.set(ContextFlags::IN_MIXIN, true);
+
+        let result = match mixin {
+            Mixin::Builtin { mixin, .. } => {
+                let args = self.eval_maybe_args(arguments, span)?;
+                self.with_content(content, |visitor| mixin(args, visitor))
+            }
+            Mixin::UserDefined(mixin, env) => self.run_user_defined_callable::<_, (), _>(
+                arguments,
+                mixin,
+                &env,
+                span,
+                |mixin, visitor| {
+                    visitor.with_content(content, |visitor| {
+                        for stmt in mixin.body.clone() {
+                            let result = visitor.visit_stmt(stmt)?;
+                            debug_assert!(result.is_none());
+                        }
+                        Ok(())
+                    })
+                },
+            ),
+        };
+
+        self.flags.set(ContextFlags::IN_MIXIN, old_in_mixin);
+
+        result
     }
 
     fn visit_mixin_decl(&mut self, mixin: AstMixin) {
         self.env.insert_mixin(
             mixin.name,
-            Mixin::UserDefined(mixin, self.env.new_closure()),
+            Mixin::UserDefined(Arc::new(mixin), self.env.new_closure()),
         );
     }
 

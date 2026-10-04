@@ -247,7 +247,7 @@ impl Environment {
     }
 
     pub fn mixin_exists(&self, name: Identifier) -> bool {
-        self.scopes.mixin_exists(name)
+        self.scopes.mixin_exists(name) || self.get_mixin_from_global_modules(name).is_some()
     }
 
     pub fn get_mixin(
@@ -278,7 +278,7 @@ impl Environment {
     }
 
     pub fn fn_exists(&self, name: Identifier) -> bool {
-        self.scopes.fn_exists(name)
+        self.scopes.fn_exists(name) || self.get_function_from_global_modules(name).is_some()
     }
 
     pub fn get_fn(

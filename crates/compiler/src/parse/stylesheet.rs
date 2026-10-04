@@ -601,7 +601,7 @@ pub(crate) trait StylesheetParser<'a>: BaseParser + Sized {
         self.expect_char('.')?;
         self.parse_variable_declaration_without_namespace(
             Some(Spanned {
-                node: Identifier::from(namespace),
+                node: Identifier::namespace(&namespace),
                 span: namespace_span,
             }),
             Some(start),
@@ -944,7 +944,7 @@ pub(crate) trait StylesheetParser<'a>: BaseParser + Sized {
         if self.scan_char('.') {
             let namespace_span = self.toks_mut().span_from(name_start);
             namespace = Some(Spanned {
-                node: Identifier::from(name),
+                node: Identifier::namespace(&name),
                 span: namespace_span,
             });
             name = self.parse_public_identifier()?;
@@ -3224,7 +3224,7 @@ pub(crate) trait StylesheetParser<'a>: BaseParser + Sized {
             Ok(VariableDeclOrInterpolation::VariableDecl(
                 self.parse_variable_declaration_without_namespace(
                     Some(Spanned {
-                        node: Identifier::from(ident),
+                        node: Identifier::namespace(&ident),
                         span: namespace_span,
                     }),
                     Some(start),

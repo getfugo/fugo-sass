@@ -1278,7 +1278,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
                 match plain {
                     Some(s) => Self::namespaced_expression(
                         Spanned {
-                            node: Identifier::from(s),
+                            node: Identifier::namespace(s),
                             span: ident_span,
                         },
                         start,
