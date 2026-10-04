@@ -33,6 +33,43 @@ pub(crate) trait BaseParser {
         Ok(())
     }
 
+    /// Like `whitespace()`, but newlines are whitespace in the indented syntax too: for positions
+    /// where a statement can't end (dart-sass's `whitespace(consumeNewlines: true)`, where
+    /// `whitespace()` is `consumeNewlines: false`).
+    fn whitespace_with_newlines(&mut self) -> SassResult<()> {
+        loop {
+            self.whitespace_without_comments_with_newlines();
+
+            if !self.scan_comment()? {
+                break;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Like `whitespace_without_comments()`, but newlines are whitespace in the indented syntax too.
+    fn whitespace_without_comments_with_newlines(&mut self) {
+        while matches!(
+            self.toks().peek(),
+            Some(Token {
+                kind: ' ' | '\t' | '\n',
+                ..
+            })
+        ) {
+            self.toks_mut().next();
+        }
+    }
+
+    /// `whitespace_with_newlines()` if `consume_newlines`, else `whitespace()`.
+    fn whitespace_newlines_if(&mut self, consume_newlines: bool) -> SassResult<()> {
+        if consume_newlines {
+            self.whitespace_with_newlines()
+        } else {
+            self.whitespace()
+        }
+    }
+
     fn scan_comment(&mut self) -> SassResult<bool> {
         if !matches!(self.toks().peek(), Some(Token { kind: '/', .. })) {
             return Ok(false);
@@ -116,6 +153,12 @@ pub(crate) trait BaseParser {
     }
 
     fn expect_whitespace(&mut self) -> SassResult<()> {
+        self.expect_whitespace_newlines_if(false)
+    }
+
+    /// `expect_whitespace()`, with newlines as whitespace in the indented syntax if
+    /// `consume_newlines`.
+    fn expect_whitespace_newlines_if(&mut self, consume_newlines: bool) -> SassResult<()> {
         if !matches!(
             self.toks().peek(),
             Some(Token {
@@ -127,9 +170,7 @@ pub(crate) trait BaseParser {
             return Err(("Expected whitespace.", self.toks().current_span()).into());
         }
 
-        self.whitespace()?;
-
-        Ok(())
+        self.whitespace_newlines_if(consume_newlines)
     }
 
     fn parse_identifier(

@@ -117,13 +117,15 @@ a
     "a {\n  color: orange;\n}\n",
     fugo_sass::Options::default().input_syntax(InputSyntax::Sass)
 );
-error!(
+test!(
     multiline_comment_in_value_position,
     r#"
 $a: /*
 loud */ red
+a
+  b: $a
 "#,
-    "Error: expected */.",
+    "a {\n  b: red;\n}\n",
     fugo_sass::Options::default().input_syntax(InputSyntax::Sass)
 );
 error!(
@@ -136,5 +138,38 @@ error!(
     document_starts_with_tab,
     "\t",
     "Error: Indenting at the beginning of the document is illegal.",
+    fugo_sass::Options::default().input_syntax(InputSyntax::Sass)
+);
+test!(
+    newlines_in_parentheses,
+    r#"@use "sass:map"
+@function f($a,
+  $b)
+  @return $a + $b
+a
+  b: f(1,
+    2)
+  c: map.get((d: e,
+    f: g), f)
+"#,
+    "a {\n  b: 3;\n  c: g;\n}\n",
+    fugo_sass::Options::default().input_syntax(InputSyntax::Sass)
+);
+test!(
+    newline_in_attribute_selector,
+    "a[\n  b=c]\n  d: e\n",
+    "a[b=c] {\n  d: e;\n}\n",
+    fugo_sass::Options::default().input_syntax(InputSyntax::Sass)
+);
+test!(
+    trailing_semicolon,
+    "a\n  b: c;\n  d: e\n",
+    "a {\n  b: c;\n  d: e;\n}\n",
+    fugo_sass::Options::default().input_syntax(InputSyntax::Sass)
+);
+error!(
+    two_statements_on_one_line,
+    "a\n  b: c; d: e\n",
+    "Error: multiple statements on one line are not supported in the indented syntax.",
     fugo_sass::Options::default().input_syntax(InputSyntax::Sass)
 );

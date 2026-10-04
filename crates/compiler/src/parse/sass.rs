@@ -36,36 +36,6 @@ impl<'a> BaseParser for SassParser<'a> {
             self.toks.next();
         }
     }
-
-    fn skip_loud_comment(&mut self) -> SassResult<()> {
-        self.expect_char('/')?;
-        self.expect_char('*')?;
-
-        loop {
-            let mut next = self.toks.next();
-            match next {
-                Some(Token { kind: '\n', .. }) => {
-                    return Err(("expected */.", self.toks.prev_span()).into())
-                }
-                Some(Token { kind: '*', .. }) => {}
-                _ => continue,
-            }
-
-            loop {
-                next = self.toks.next();
-
-                if !matches!(next, Some(Token { kind: '*', .. })) {
-                    break;
-                }
-            }
-
-            if matches!(next, Some(Token { kind: '/', .. })) {
-                break;
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl<'a> StylesheetParser<'a> for SassParser<'a> {
@@ -106,9 +76,9 @@ impl<'a> StylesheetParser<'a> for SassParser<'a> {
 
         loop {
             buffer.add_interpolation(self.almost_any_value(true)?);
-            buffer.add_char('\n');
-
-            if !(buffer.trailing_string().trim_end().ends_with(',') && self.scan_char('\n')) {
+            if buffer.trailing_string().trim_end().ends_with(',') && self.scan_char('\n') {
+                buffer.add_char('\n');
+            } else {
                 break;
             }
         }
@@ -117,8 +87,9 @@ impl<'a> StylesheetParser<'a> for SassParser<'a> {
     }
 
     fn expect_statement_separator(&mut self, name: Option<&str>) -> SassResult<()> {
+        let trailing_semicolon = self.try_trailing_semicolon()?;
         if !self.at_end_of_statement() {
-            self.expect_newline()?;
+            self.expect_newline(trailing_semicolon)?;
         }
 
         if self.peek_indentation()? <= self.current_indentation {
@@ -325,7 +296,7 @@ impl<'a> StylesheetParser<'a> for SassParser<'a> {
 
             // Preserve empty lines.
             while self.looking_at_double_newline() {
-                self.expect_newline()?;
+                self.expect_newline(false)?;
                 buffer.add_char('\n');
                 buffer.add_char(' ');
                 buffer.add_char('*');
@@ -456,13 +427,10 @@ impl<'a> SassParser<'a> {
         Ok(())
     }
 
-    fn expect_newline(&mut self) -> SassResult<()> {
+    /// Consumes a newline. `trailing_semicolon` is whether a semicolon ended the statement, for the
+    /// error.
+    fn expect_newline(&mut self, trailing_semicolon: bool) -> SassResult<()> {
         match self.toks.peek() {
-            Some(Token { kind: ';', .. }) => Err((
-                "semicolons aren't allowed in the indented syntax.",
-                self.toks.current_span(),
-            )
-                .into()),
             Some(Token { kind: '\r', .. }) => {
                 self.toks.next();
                 self.scan_char('\n');
@@ -472,8 +440,26 @@ impl<'a> SassParser<'a> {
                 self.toks.next();
                 Ok(())
             }
-            _ => Err(("expected newline.", self.toks.current_span()).into()),
+            _ => Err((
+                if trailing_semicolon {
+                    "multiple statements on one line are not supported in the indented syntax."
+                } else {
+                    "expected newline."
+                },
+                self.toks.current_span(),
+            )
+                .into()),
         }
+    }
+
+    /// Consumes a semicolon that ends a statement, as dart-sass 1.105.1 allows, and the whitespace
+    /// after it.
+    fn try_trailing_semicolon(&mut self) -> SassResult<bool> {
+        if self.scan_char(';') {
+            self.whitespace()?;
+            return Ok(true);
+        }
+        Ok(false)
     }
 
     fn read_indentation(&mut self) -> SassResult<usize> {
