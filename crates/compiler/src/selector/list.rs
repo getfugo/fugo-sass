@@ -7,7 +7,7 @@ use std::{
 
 use codemap::Span;
 
-use super::{unify_complex, ComplexSelector, ComplexSelectorComponent};
+use super::{unify_complex, ComplexSelector, ComplexSelectorComponent, Pseudo, SimpleSelector};
 
 use crate::{
     common::{Brackets, ListSeparator, QuoteKind},
@@ -74,6 +74,26 @@ impl SelectorList {
         self.components
             .iter()
             .any(ComplexSelector::contains_parent_selector)
+    }
+
+    /// Whether a `SimpleSelector::Parent` with a suffix (`&-a`) is in this list, nested selectors
+    /// included.
+    fn contains_parent_selector_with_suffix(&self) -> bool {
+        self.components.iter().any(|complex| {
+            complex.components.iter().any(|component| match component {
+                ComplexSelectorComponent::Compound(compound) => {
+                    compound.components.iter().any(|simple| match simple {
+                        SimpleSelector::Parent(suffix) => suffix.is_some(),
+                        SimpleSelector::Pseudo(Pseudo {
+                            selector: Some(selector),
+                            ..
+                        }) => selector.contains_parent_selector_with_suffix(),
+                        _ => false,
+                    })
+                }
+                ComplexSelectorComponent::Combinator(..) => false,
+            })
+        })
     }
 
     pub const fn new(span: Span) -> Self {
@@ -151,25 +171,29 @@ impl SelectorList {
     /// If `implicit_parent` is true, this treats `ComplexSelector`s that don't
     /// contain an explicit `SimpleSelector::Parent` as though they began with one.
     ///
-    /// The given `parent` may be `None`, indicating that this has no parents. If
-    /// so, this list is returned as-is if it doesn't contain any explicit
-    /// `SimpleSelector::Parent`s. If it does, this returns a `SassError`.
+    /// If `preserve_parent_selectors` is true (plain CSS nesting), `SimpleSelector::Parent`s are
+    /// kept rather than replaced, and `parent` is prepended to every complex selector.
+    ///
+    /// The given `parent` may be `None`, indicating that this has no parents. If so, this list is
+    /// returned as-is: a parent selector at the root of the document is written as is (dart-sass
+    /// 1.99), unless it has a suffix, which is an error.
     pub fn resolve_parent_selectors(
         self,
         parent: Option<Self>,
         implicit_parent: bool,
+        preserve_parent_selectors: bool,
     ) -> SassResult<Self> {
         let parent = match parent {
             Some(p) => p,
             None => {
-                if !self.contains_parent_selector() {
-                    return Ok(self);
+                if !preserve_parent_selectors && self.contains_parent_selector_with_suffix() {
+                    return Err((
+                        "A top-level selector may not contain a parent selector with a suffix.",
+                        self.span,
+                    )
+                        .into());
                 }
-                return Err((
-                    "Top-level selectors may not contain the parent selector \"&\".",
-                    self.span,
-                )
-                    .into());
+                return Ok(self);
             }
         };
 
@@ -178,7 +202,7 @@ impl SelectorList {
                 self.components
                     .into_iter()
                     .map(|complex| {
-                        if !complex.contains_parent_selector() {
+                        if preserve_parent_selectors || !complex.contains_parent_selector() {
                             if !implicit_parent {
                                 return Ok(vec![complex]);
                             }

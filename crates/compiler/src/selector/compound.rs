@@ -138,9 +138,11 @@ impl CompoundSelector {
                                 return Ok(SimpleSelector::Pseudo(pseudo));
                             }
 
-                            pseudo.selector = Some(Box::new(
-                                sel.resolve_parent_selectors(Some(parent.clone()), false)?,
-                            ));
+                            pseudo.selector = Some(Box::new(sel.resolve_parent_selectors(
+                                Some(parent.clone()),
+                                false,
+                                false,
+                            )?));
                         }
 
                         Ok(SimpleSelector::Pseudo(pseudo))

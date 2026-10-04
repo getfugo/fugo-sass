@@ -46,6 +46,10 @@
   properties may have empty values (`--a:;`)
 - CI compares Bootstrap 5.0.2's and 5.3.3's CSS with `dart-sass` 1.105.1's (the differences that
   remain are listed in `crates/spec/bootstrap`), instead of Bootstrap 5.0.2's with 1.54.3's
+- nesting in plain CSS files is written as is, as CSS nesting (`dart-sass` 1.73), with the at-rules
+  in nested rules; a plain CSS rule with `&` in a Sass rule is nested too (1.87). A parent selector
+  `&` at the root of the document is written as is (1.99), where it was an error; one with a suffix
+  is an error. `@font-face` in a style rule is pulled out to the root (1.58.4)
 
 # 0.14.0
 

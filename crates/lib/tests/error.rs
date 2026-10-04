@@ -126,10 +126,7 @@ error!(
 error!(toplevel_hash, "#", "Error: expected \"{\".");
 error!(toplevel_closing_brace, "}", "Error: unmatched \"}\".");
 error!(toplevel_at, "@", "Error: Expected identifier.");
-error!(
-    toplevel_ampersand,
-    "& {}", "Error: Top-level selectors may not contain the parent selector \"&\"."
-);
+test!(toplevel_ampersand, "& {}", "");
 // note: dart-sass gives error "Expected escape sequence."
 error!(toplevel_backslash, "\\", "Error: Expected expression.");
 error!(toplevel_var_no_colon, "$r", "Error: expected \":\".");

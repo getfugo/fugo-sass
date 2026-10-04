@@ -40,6 +40,10 @@ pub(crate) struct SelectorParser {
     /// Whether this parser allows placeholder selectors beginning with `%`.
     allows_placeholder: bool,
 
+    /// Whether to parse the selector as plain CSS: `&` may be anywhere in a compound selector
+    /// (CSS nesting), without a suffix, and placeholders are not allowed.
+    plain_css: bool,
+
     pub toks: Lexer,
 
     span: Span,
@@ -61,8 +65,15 @@ impl SelectorParser {
             toks,
             allows_parent,
             allows_placeholder,
+            plain_css: false,
             span,
         }
+    }
+
+    /// This parser parsing the selector as plain CSS.
+    pub fn plain_css(mut self) -> Self {
+        self.plain_css = true;
+        self
     }
 
     pub fn parse(mut self) -> SassResult<SelectorList> {
@@ -169,7 +180,13 @@ impl SelectorParser {
             }
         }
 
-        if components.is_empty() {
+        if components.is_empty()
+            || (self.plain_css
+                && matches!(
+                    components.last(),
+                    Some(ComplexSelectorComponent::Combinator(..))
+                ))
+        {
             return Err(("expected selector.", self.span).into());
         }
 
@@ -180,11 +197,11 @@ impl SelectorParser {
         let mut components = vec![self.parse_simple_selector(None)?];
 
         while let Some(Token { kind, .. }) = self.toks.peek() {
-            if !is_simple_selector_start(kind) {
+            if !(is_simple_selector_start(kind) || (self.plain_css && kind == '&')) {
                 break;
             }
 
-            components.push(self.parse_simple_selector(Some(false))?);
+            components.push(self.parse_simple_selector(Some(self.plain_css))?);
         }
 
         Ok(CompoundSelector { components })
@@ -200,6 +217,13 @@ impl SelectorParser {
             Some(Token { kind: '.', .. }) => self.parse_class_selector(),
             Some(Token { kind: '#', .. }) => self.parse_id_selector(),
             Some(Token { kind: '%', .. }) => {
+                if self.plain_css {
+                    return Err((
+                        "Placeholder selectors aren't allowed in plain CSS.",
+                        self.span,
+                    )
+                        .into());
+                }
                 if !self.allows_placeholder {
                     return Err(("Placeholder selectors aren't allowed here.", self.span).into());
                 }
@@ -325,6 +349,13 @@ impl SelectorParser {
         } else {
             None
         };
+        if self.plain_css && suffix.is_some() {
+            return Err((
+                "Parent selectors can't have suffixes in plain CSS.",
+                self.span,
+            )
+                .into());
+        }
         Ok(SimpleSelector::Parent(suffix))
     }
 
