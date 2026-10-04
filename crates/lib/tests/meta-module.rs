@@ -1,10 +1,11 @@
 use std::io::Write;
 
+use macros::TestFs;
+
 #[macro_use]
 mod macros;
 
 test!(
-    #[ignore = "weird ordering problem"]
     module_functions_builtin,
     "@use 'sass:meta';\na {\n  color: inspect(meta.module-functions(meta));\n}\n",
     "a {\n  color: (\"feature-exists\": get-function(\"feature-exists\"), \"inspect\": get-function(\"inspect\"), \"type-of\": get-function(\"type-of\"), \"keywords\": get-function(\"keywords\"), \"global-variable-exists\": get-function(\"global-variable-exists\"), \"variable-exists\": get-function(\"variable-exists\"), \"function-exists\": get-function(\"function-exists\"), \"mixin-exists\": get-function(\"mixin-exists\"), \"content-exists\": get-function(\"content-exists\"), \"module-variables\": get-function(\"module-variables\"), \"module-functions\": get-function(\"module-functions\"), \"get-function\": get-function(\"get-function\"), \"call\": get-function(\"call\"), \"calc-args\": get-function(\"calc-args\"), \"calc-name\": get-function(\"calc-name\"));\n}\n"
@@ -71,4 +72,39 @@ fn load_css_non_string_url() {
 fn load_css_non_map_with() {
     let input = "@use \"sass:meta\";\na {\n @include meta.load-css(foo, 2);\n}";
     assert_err!("Error: $with: 2 is not a map.", input);
+}
+
+#[test]
+fn module_members_and_keywords_in_definition_order() {
+    // Names are interned per thread, and these maps were ordered by the names' intern ids, so
+    // names a previous compilation on the thread met first (here in reverse) came first.
+    fugo_sass::from_string(
+        "a { $c: 1; $b: 2; $a: 3; $x: 4; $y: 5; $z: 6; }".to_owned(),
+        &fugo_sass::Options::default(),
+    )
+    .unwrap();
+    let mut fs = TestFs::new();
+    fs.add_file(
+        "_vars.scss",
+        "$a: 1; $b: 2; $c: 3;
+        @function a() { @return 1; }
+        @function c() { @return 1; }
+        @function b() { @return 1; }",
+    );
+    let input = r#"
+        @use "sass:map";
+        @use "sass:meta";
+        @use "vars";
+        @function keys($args...) { @return map.keys(meta.keywords($args)); }
+        a {
+          variables: map.keys(meta.module-variables(vars));
+          functions: map.keys(meta.module-functions(vars));
+          keywords: keys($z: 1, $y: 2, $x: 3);
+        }
+    "#;
+    assert_eq!(
+        "a {\n  variables: \"a\", \"b\", \"c\";\n  functions: \"a\", \"c\", \"b\";\n  keywords: z, y, x;\n}\n",
+        &fugo_sass::from_string(input.to_owned(), &fugo_sass::Options::default().fs(&fs))
+            .expect(input)
+    );
 }

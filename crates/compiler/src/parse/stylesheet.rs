@@ -1,6 +1,7 @@
+use indexmap::{IndexMap, IndexSet};
 use std::{
     cell::Cell,
-    collections::{BTreeMap, HashSet},
+    collections::HashSet,
     ffi::OsString,
     mem,
     path::{Path, PathBuf},
@@ -1429,10 +1430,10 @@ pub(crate) trait StylesheetParser<'a>: BaseParser + Sized {
             None
         };
 
-        let mut shown_mixins_and_functions: Option<HashSet<Identifier>> = None;
-        let mut shown_variables: Option<HashSet<Identifier>> = None;
-        let mut hidden_mixins_and_functions: Option<HashSet<Identifier>> = None;
-        let mut hidden_variables: Option<HashSet<Identifier>> = None;
+        let mut shown_mixins_and_functions: Option<IndexSet<Identifier>> = None;
+        let mut shown_variables: Option<IndexSet<Identifier>> = None;
+        let mut hidden_mixins_and_functions: Option<IndexSet<Identifier>> = None;
+        let mut hidden_variables: Option<IndexSet<Identifier>> = None;
 
         if self.scan_identifier("show", false)? {
             let members = self.parse_member_list()?;
@@ -1486,9 +1487,9 @@ pub(crate) trait StylesheetParser<'a>: BaseParser + Sized {
         ))
     }
 
-    fn parse_member_list(&mut self) -> SassResult<(HashSet<Identifier>, HashSet<Identifier>)> {
-        let mut identifiers = HashSet::new();
-        let mut variables = HashSet::new();
+    fn parse_member_list(&mut self) -> SassResult<(IndexSet<Identifier>, IndexSet<Identifier>)> {
+        let mut identifiers = IndexSet::new();
+        let mut variables = IndexSet::new();
 
         loop {
             self.whitespace()?;
@@ -2255,7 +2256,7 @@ pub(crate) trait StylesheetParser<'a>: BaseParser + Sized {
         self.whitespace()?;
 
         let mut positional = Vec::new();
-        let mut named = BTreeMap::new();
+        let mut named = IndexMap::new();
 
         let mut rest: Option<AstExpr> = None;
         let mut keyword_rest: Option<AstExpr> = None;

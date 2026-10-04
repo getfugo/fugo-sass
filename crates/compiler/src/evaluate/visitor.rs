@@ -11,7 +11,7 @@ use std::{
 };
 
 use codemap::{CodeMap, Span, Spanned};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     ast::*,
@@ -292,7 +292,7 @@ impl<'a> Visitor<'a> {
             // `@forward` before checking that the configuration is empty. Errors for
             // outer `with` clauses will be thrown once those clauses finish
             // executing.
-            let configured_variables: HashSet<Identifier> = forward_rule
+            let configured_variables: IndexSet<Identifier> = forward_rule
                 .configuration
                 .iter()
                 .map(|var| var.name.node)
@@ -337,7 +337,7 @@ impl<'a> Visitor<'a> {
         config: Rc<RefCell<Configuration>>,
         forward_rule: &AstForwardRule,
     ) -> SassResult<Rc<RefCell<Configuration>>> {
-        let mut new_values = BTreeMap::from_iter((*config).borrow().values.iter());
+        let mut new_values = IndexMap::from_iter((*config).borrow().values.iter());
 
         for variable in &forward_rule.configuration {
             if variable.is_guarded {
@@ -381,7 +381,7 @@ impl<'a> Visitor<'a> {
     fn remove_used_configuration(
         upstream: &Rc<RefCell<Configuration>>,
         downstream: &Rc<RefCell<Configuration>>,
-        except: &HashSet<Identifier>,
+        except: &IndexSet<Identifier>,
     ) {
         let mut names_to_remove = Vec::new();
         let downstream_keys = (*downstream).borrow().values.keys();
@@ -716,7 +716,7 @@ impl<'a> Visitor<'a> {
         let configuration = if use_rule.configuration.is_empty() {
             Rc::new(RefCell::new(Configuration::empty()))
         } else {
-            let mut values = BTreeMap::new();
+            let mut values = IndexMap::new();
 
             for var in use_rule.configuration {
                 let value = self.visit_expr(var.expr.node)?;
@@ -2115,7 +2115,7 @@ impl<'a> Visitor<'a> {
             positional.push(self.without_slash(val));
         }
 
-        let mut named = BTreeMap::new();
+        let mut named = IndexMap::new();
 
         for (key, expr) in arguments.named {
             let val = self.visit_expr(expr)?;
@@ -2200,7 +2200,7 @@ impl<'a> Visitor<'a> {
 
     fn add_rest_map(
         &mut self,
-        named: &mut BTreeMap<Identifier, Value>,
+        named: &mut IndexMap<Identifier, Value>,
         rest: SassMap,
     ) -> SassResult<()> {
         for (key, val) in rest {
@@ -2273,7 +2273,7 @@ impl<'a> Visitor<'a> {
 
                 for argument in additional_declared_args {
                     let name = argument.name;
-                    let value = evaluated.named.remove(&argument.name).map_or_else(
+                    let value = evaluated.named.shift_remove(&argument.name).map_or_else(
                         || {
                             // todo: superfluous clone
                             let v = visitor.visit_expr(argument.default.clone().unwrap())?;
@@ -2702,19 +2702,19 @@ impl<'a> Visitor<'a> {
         let mut named = if_expr.0.named;
 
         let condition = if positional.is_empty() {
-            named.remove(&Identifier::from("condition")).unwrap()
+            named.shift_remove(&Identifier::from("condition")).unwrap()
         } else {
             positional.remove(0)
         };
 
         let if_true = if positional.is_empty() {
-            named.remove(&Identifier::from("if_true")).unwrap()
+            named.shift_remove(&Identifier::from("if_true")).unwrap()
         } else {
             positional.remove(0)
         };
 
         let if_false = if positional.is_empty() {
-            named.remove(&Identifier::from("if_false")).unwrap()
+            named.shift_remove(&Identifier::from("if_false")).unwrap()
         } else {
             positional.remove(0)
         };

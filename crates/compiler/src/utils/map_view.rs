@@ -1,9 +1,5 @@
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashSet},
-    fmt,
-    sync::Arc,
-};
+use indexmap::{IndexMap, IndexSet};
+use std::{cell::RefCell, fmt, sync::Arc};
 
 use crate::common::Identifier;
 
@@ -48,7 +44,7 @@ impl<T> MapView for Arc<dyn MapView<Value = T>> {
 }
 
 #[derive(Debug)]
-pub(crate) struct BaseMapView<T>(pub Arc<RefCell<BTreeMap<Identifier, T>>>);
+pub(crate) struct BaseMapView<T>(pub Arc<RefCell<IndexMap<Identifier, T>>>);
 
 impl<T> Clone for BaseMapView<T> {
     fn clone(&self) -> Self {
@@ -79,7 +75,7 @@ impl<T: fmt::Debug + Clone> MapView for BaseMapView<T> {
     }
 
     fn remove(&self, name: Identifier) -> Option<Self::Value> {
-        (*self.0).borrow_mut().remove(&name)
+        (*self.0).borrow_mut().shift_remove(&name)
     }
 
     fn insert(&self, name: Identifier, value: Self::Value) -> Option<Self::Value> {
@@ -194,11 +190,11 @@ impl<V: fmt::Debug + Clone, T: MapView<Value = V> + Clone> MapView for PrefixedM
 #[derive(Debug, Clone)]
 pub(crate) struct LimitedMapView<V: fmt::Debug + Clone, T: MapView<Value = V> + Clone>(
     pub T,
-    pub HashSet<Identifier>,
+    pub IndexSet<Identifier>,
 );
 
 impl<V: fmt::Debug + Clone, T: MapView<Value = V> + Clone> LimitedMapView<V, T> {
-    pub fn safelist(map: T, keys: &HashSet<Identifier>) -> Self {
+    pub fn safelist(map: T, keys: &IndexSet<Identifier>) -> Self {
         let keys = keys
             .iter()
             .copied()
@@ -208,7 +204,7 @@ impl<V: fmt::Debug + Clone, T: MapView<Value = V> + Clone> LimitedMapView<V, T> 
         Self(map, keys)
     }
 
-    pub fn blocklist(map: T, blocklist: &HashSet<Identifier>) -> Self {
+    pub fn blocklist(map: T, blocklist: &IndexSet<Identifier>) -> Self {
         let keys = map
             .keys()
             .into_iter()
@@ -261,15 +257,16 @@ impl<V: fmt::Debug + Clone, T: MapView<Value = V> + Clone> MapView for LimitedMa
 #[derive(Debug)]
 pub(crate) struct MergedMapView<V: fmt::Debug + Clone>(
     pub Vec<Arc<dyn MapView<Value = V>>>,
-    HashSet<Identifier>,
+    IndexSet<Identifier>,
 );
 
 impl<V: fmt::Debug + Clone> MergedMapView<V> {
     pub fn new(maps: Vec<Arc<dyn MapView<Value = V>>>) -> Self {
-        let unique_keys: HashSet<Identifier> = maps.iter().fold(HashSet::new(), |mut keys, map| {
-            keys.extend(&map.keys());
-            keys
-        });
+        let unique_keys: IndexSet<Identifier> =
+            maps.iter().fold(IndexSet::new(), |mut keys, map| {
+                keys.extend(&map.keys());
+                keys
+            });
 
         Self(maps, unique_keys)
     }

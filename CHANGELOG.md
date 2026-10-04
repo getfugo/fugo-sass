@@ -7,6 +7,14 @@
 
 -->
 
+# Unreleased
+
+- `meta.module-variables(..)`, `meta.module-functions(..)` and `meta.keywords(..)` return their maps
+  in definition order, as `dart-sass` does. They were ordered by when the thread had first met the
+  names, which earlier compilations on the same thread could change. In `fugo-sass-compiler`, the
+  maps and sets of names in `sass_value` and `sass_ast` are `IndexMap`s and `IndexSet`s
+  (`ArgList::keywords()`, `ArgumentResult::named`, `AstForwardRule`'s shown and hidden members)
+
 # 0.14.0
 
 The first release of fugo-sass, the fork of grass 0.13.4. The crates were renamed: `grass` is

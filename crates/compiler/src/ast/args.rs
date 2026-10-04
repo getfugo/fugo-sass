@@ -1,8 +1,5 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    iter::Iterator,
-    mem,
-};
+use indexmap::IndexMap;
+use std::{collections::BTreeSet, iter::Iterator, mem};
 
 use codemap::{Span, Spanned};
 
@@ -38,7 +35,7 @@ impl ArgumentDeclaration {
     pub fn verify<T>(
         &self,
         num_positional: usize,
-        names: &BTreeMap<Identifier, T>,
+        names: &IndexMap<Identifier, T>,
         span: Span,
     ) -> SassResult<()> {
         let mut named_used = 0;
@@ -132,7 +129,7 @@ impl ArgumentDeclaration {
 #[derive(Debug, Clone)]
 pub struct ArgumentInvocation {
     pub(crate) positional: Vec<AstExpr>,
-    pub(crate) named: BTreeMap<Identifier, AstExpr>,
+    pub(crate) named: IndexMap<Identifier, AstExpr>,
     pub(crate) rest: Option<AstExpr>,
     pub(crate) keyword_rest: Option<AstExpr>,
     pub(crate) span: Span,
@@ -142,7 +139,7 @@ impl ArgumentInvocation {
     pub fn empty(span: Span) -> Self {
         Self {
             positional: Vec::new(),
-            named: BTreeMap::new(),
+            named: IndexMap::new(),
             rest: None,
             keyword_rest: None,
             span,
@@ -164,7 +161,7 @@ pub(crate) enum MaybeEvaledArguments {
 #[derive(Debug, Clone)]
 pub struct ArgumentResult {
     pub(crate) positional: Vec<Value>,
-    pub(crate) named: BTreeMap<Identifier, Value>,
+    pub(crate) named: IndexMap<Identifier, Value>,
     pub(crate) separator: ListSeparator,
     pub(crate) span: Span,
     // todo: hack
@@ -176,7 +173,7 @@ impl ArgumentResult {
     ///
     /// Removes the argument
     pub fn get_named<T: Into<Identifier>>(&mut self, val: T) -> Option<Spanned<Value>> {
-        self.named.remove(&val.into()).map(|n| Spanned {
+        self.named.shift_remove(&val.into()).map(|n| Spanned {
             node: n,
             span: self.span,
         })

@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, BTreeSet};
+use indexmap::IndexMap;
+use std::collections::BTreeSet;
 
 use crate::{builtin::builtin_imports::*, serializer::serialize_number, value::SassNumber};
 
@@ -85,7 +86,7 @@ fn inner_hsl(
             ParsedChannels::List(list) => {
                 let args = ArgumentResult {
                     positional: list,
-                    named: BTreeMap::new(),
+                    named: IndexMap::new(),
                     separator: ListSeparator::Comma,
                     span: args.span(),
                     touched: BTreeSet::new(),
