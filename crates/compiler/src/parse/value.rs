@@ -41,6 +41,8 @@ pub(crate) struct ValueParser<'a, 'c, P: StylesheetParser<'a>> {
     start: usize,
     inside_bracketed_list: bool,
     single_equals: bool,
+    /// Whether newlines are whitespace in the indented syntax (dart-sass's `consumeNewlines`).
+    consume_newlines: bool,
     parse_until: Option<Predicate<'c, P>>,
     _a: PhantomData<&'a ()>,
 }
@@ -51,9 +53,16 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
         parse_until: Option<Predicate<'c, P>>,
         inside_bracketed_list: bool,
         single_equals: bool,
+        consume_newlines: bool,
     ) -> SassResult<Spanned<AstExpr>> {
         let start = parser.toks().cursor();
-        let mut value_parser = Self::new(parser, parse_until, inside_bracketed_list, single_equals);
+        let mut value_parser = Self::new(
+            parser,
+            parse_until,
+            inside_bracketed_list,
+            single_equals,
+            consume_newlines,
+        );
 
         if let Some(parse_until) = value_parser.parse_until {
             if parse_until(parser)? {
@@ -65,7 +74,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
             let bracket_start = parser.toks().cursor();
 
             parser.expect_char('[')?;
-            parser.whitespace()?;
+            parser.whitespace_with_newlines()?;
 
             if parser.scan_char(']') {
                 return Ok(AstExpr::List(ListExpr {
@@ -92,6 +101,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
         parse_until: Option<Predicate<'c, P>>,
         inside_bracketed_list: bool,
         single_equals: bool,
+        consume_newlines: bool,
     ) -> Self {
         Self {
             comma_expressions: None,
@@ -105,6 +115,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
             parse_until,
             inside_bracketed_list,
             single_equals,
+            consume_newlines,
             _a: PhantomData,
         }
     }
@@ -112,15 +123,23 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
     /// Parse a value from a stream of tokens
     ///
     /// This function will cease parsing if the predicate returns true.
+    fn whitespace(&self, parser: &mut P) -> SassResult<()> {
+        if self.consume_newlines || self.inside_bracketed_list {
+            parser.whitespace_with_newlines()
+        } else {
+            parser.whitespace()
+        }
+    }
+
     pub(crate) fn parse_value(&mut self, parser: &mut P) -> SassResult<Spanned<AstExpr>> {
-        parser.whitespace()?;
+        self.whitespace(parser)?;
 
         let start = parser.toks().cursor();
 
         let was_in_parens = parser.flags().in_parens();
 
         loop {
-            parser.whitespace()?;
+            self.whitespace(parser)?;
 
             if let Some(parse_until) = self.parse_until {
                 if parse_until(parser)? {
@@ -479,7 +498,9 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
         match first {
             Some(Token { kind: '(', .. }) => self.parse_paren_expr(parser),
             Some(Token { kind: '/', .. }) => self.parse_unary_operation(parser),
-            Some(Token { kind: '[', .. }) => Self::parse_expression(parser, None, true, false),
+            Some(Token { kind: '[', .. }) => {
+                Self::parse_expression(parser, None, true, false, false)
+            }
             Some(Token { kind: '$', .. }) => Self::parse_variable(parser),
             Some(Token { kind: '&', .. }) => Self::parse_selector(parser),
             Some(Token { kind: '"', .. }) | Some(Token { kind: '\'', .. }) => Ok(parser
@@ -670,7 +691,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
             None => return Err(("Expected expression.", op.span).into()),
         }
 
-        parser.whitespace()?;
+        parser.whitespace_with_newlines()?;
         self.operator_whitespace
             .push(before_operator && separates(parser.toks().peek_n_backwards(1)));
 
@@ -713,14 +734,14 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
         let mut pairs = vec![(first, parser.parse_expression_until_comma(false)?.node)];
 
         while parser.scan_char(',') {
-            parser.whitespace()?;
+            parser.whitespace_with_newlines()?;
             if !parser.looking_at_expression() {
                 break;
             }
 
             let key = parser.parse_expression_until_comma(false)?;
             parser.expect_char(':')?;
-            parser.whitespace()?;
+            parser.whitespace_with_newlines()?;
             let value = parser.parse_expression_until_comma(false)?;
             pairs.push((key, value.node));
         }
@@ -735,7 +756,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
         if parser.is_plain_css() {
             // Parentheses are only allowed within calculations, which the evaluator checks.
             parser.expect_char('(')?;
-            parser.whitespace()?;
+            parser.whitespace_with_newlines()?;
             let expr = parser.parse_expression_until_comma(false)?;
             parser.expect_char(')')?;
             return Ok(AstExpr::Paren(Arc::new(expr.node)).span(parser.toks_mut().span_from(start)));
@@ -745,7 +766,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
         parser.flags_mut().set(ContextFlags::IN_PARENS, true);
 
         parser.expect_char('(')?;
-        parser.whitespace()?;
+        parser.whitespace_with_newlines()?;
         if !parser.looking_at_expression() {
             parser.expect_char(')')?;
             parser
@@ -761,7 +782,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
 
         let first = parser.parse_expression_until_comma(false)?;
         if parser.scan_char(':') {
-            parser.whitespace()?;
+            parser.whitespace_with_newlines()?;
             parser
                 .flags_mut()
                 .set(ContextFlags::IN_PARENS, was_in_parentheses);
@@ -776,7 +797,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
             return Ok(AstExpr::Paren(Arc::new(first.node)).span(first.span));
         }
 
-        parser.whitespace()?;
+        parser.whitespace_with_newlines()?;
 
         let mut expressions = vec![first];
 
@@ -788,7 +809,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
             if !parser.scan_char(',') {
                 break;
             }
-            parser.whitespace()?;
+            parser.whitespace_with_newlines()?;
         }
 
         parser.expect_char(')')?;
@@ -965,7 +986,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
             return Err(("Operators aren't allowed in plain CSS.", op_span).into());
         }
 
-        parser.whitespace()?;
+        parser.whitespace_with_newlines()?;
 
         let operand = self.parse_single_expression(parser)?;
 
@@ -1157,7 +1178,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
     fn parse_important_expr(parser: &mut P) -> SassResult<Spanned<AstExpr>> {
         let start = parser.toks().cursor();
         parser.expect_char('!')?;
-        parser.whitespace()?;
+        parser.whitespace_with_newlines()?;
         parser.expect_identifier("important", false)?;
 
         let span = parser.toks_mut().span_from(start);
@@ -1207,7 +1228,7 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
             } else if plain.eq_ignore_ascii_case("if") && parser.toks().next_char_is('(') {
                 return parser.parse_if_expression(start);
             } else if plain == "not" {
-                parser.whitespace()?;
+                parser.whitespace_with_newlines()?;
 
                 let value = self.parse_single_expression(parser)?;
 
@@ -1478,7 +1499,9 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
             }
         }
 
-        buffer.add_interpolation(parser.parse_interpolated_declaration_value(false, true, true)?);
+        buffer.add_interpolation(
+            parser.parse_interpolated_declaration_value(false, true, true, false)?,
+        );
         parser.expect_char(')')?;
         buffer.add_char(')');
 

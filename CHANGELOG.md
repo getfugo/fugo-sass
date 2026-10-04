@@ -57,6 +57,14 @@
 - quoted strings in custom properties, `if()` conditions, and `@supports` and `@import`
   conditions are written as they are in the source (`--a: 'b'`), as in `dart-sass` 1.105.1, where
   they were requoted (`"b"`)
+- the indented syntax takes newlines wherever a statement can't end (`dart-sass` 1.84): in
+  parentheses, brackets, argument and parameter lists, maps, `@if` and `@each` headers, `@use` and
+  `@forward` clauses, media and supports queries, interpolation, and selectors; loud comments in
+  values may span lines. A statement may end with a semicolon, and two statements on one line are
+  an error. Trailing commas are allowed after rest arguments and rest parameters
+- selectors, `@extend` and the preludes of unknown at-rules keep quoted strings as written
+  (`::before('a')`), and an unmatched `)` or `]` in them is an error (`Unexpected ")".`), as in
+  `dart-sass` 1.105.1
 
 # 0.14.0
 

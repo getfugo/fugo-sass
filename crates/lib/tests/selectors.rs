@@ -897,7 +897,7 @@ test!(
     r#"::foo('red') {
         color: &;
     }"#,
-    "::foo(\"red\") {\n  color: ::foo(\"red\");\n}\n"
+    "::foo('red') {\n  color: ::foo('red');\n}\n"
 );
 test!(
     pseudo_element_loud_comments,
