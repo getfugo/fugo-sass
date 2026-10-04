@@ -26,6 +26,21 @@
   `dart-sass`, where it panicked; a style rule inside `@media` keeps its media context, so
   `@extend` across media queries fails as in `dart-sass` instead of compiling; extensions merged
   with earlier ones, and those found while extending other extensions, are kept
+- calculations follow `dart-sass` 1.105.1: `round()`, `mod()`, `rem()`, `sin()`, `cos()`, `tan()`,
+  `asin()`, `acos()`, `atan()`, `atan2()`, `pow()`, `sqrt()`, `hypot()`, `log()`, `exp()`, `abs()`,
+  `sign()` and `calc-size()` are calculations, with the constants `pi`, `e`, `infinity`,
+  `-infinity` and `NaN`. A calculation is parsed as a function call and evaluated as a
+  calculation only when no Sass function of its name exists; `min()`, `max()`, `round()` and
+  `abs()` are calculations when their arguments allow it, else the global functions. Plain CSS
+  files evaluate calculations too
+- numbers are written as `dart-sass` 1.105.1 writes them: infinities, `NaN` and numbers with
+  complex units as calculations (`calc(infinity)`, `calc(1px * 1em)`) instead of `Infinity` or an
+  error, `-0` as `-0`, all digits in `meta.inspect()` and messages, and other numbers rounded to
+  10 decimals on their decimal digits
+- `%` with infinities follows `dart-sass`, and `%`, `math.round()`, `math.ceil()` and
+  `math.floor()` never give `-0`; `$a / f()` divides unless `f()` is a calculation
+- `color.opacity()` exists in `sass:color`; a module function that does not exist is an
+  `Undefined function.` error rather than a global function of the same name
 
 # 0.14.0
 

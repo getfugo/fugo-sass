@@ -4,8 +4,12 @@ use std::{path::Path, sync::Arc};
 use codemap::{Span, Spanned};
 
 use crate::{
-    ast::*, builtin::DISALLOWED_PLAIN_CSS_FUNCTION_NAMES, common::QuoteKind, error::SassResult,
-    lexer::Lexer, ContextFlags, Options,
+    ast::*,
+    builtin::DISALLOWED_PLAIN_CSS_FUNCTION_NAMES,
+    common::{Identifier, QuoteKind},
+    error::SassResult,
+    lexer::Lexer,
+    ContextFlags, Options,
 };
 
 use super::{value::ValueParser, BaseParser, StylesheetParser};
@@ -196,16 +200,54 @@ impl<'a> CssParser<'a> {
             return Err(("This function isn't allowed in plain CSS.", span).into());
         }
 
+        let arguments = ArgumentInvocation {
+            positional: arguments,
+            named: IndexMap::new(),
+            rest: None,
+            keyword_rest: None,
+            span: self.toks.span_from(before_args),
+        };
+
+        // Calculations are evaluated in plain CSS too, as dart-sass evaluates every plain CSS
+        // function call (`calc(1px)` is `1px`).
+        if matches!(
+            lower.as_str(),
+            "calc"
+                | "clamp"
+                | "hypot"
+                | "sin"
+                | "cos"
+                | "tan"
+                | "asin"
+                | "acos"
+                | "atan"
+                | "sqrt"
+                | "exp"
+                | "sign"
+                | "mod"
+                | "rem"
+                | "atan2"
+                | "pow"
+                | "log"
+                | "calc-size"
+                | "min"
+                | "max"
+                | "round"
+                | "abs"
+        ) {
+            return Ok(AstExpr::FunctionCall(FunctionCallExpr {
+                namespace: None,
+                name: Identifier::from(plain),
+                arguments: Arc::new(arguments),
+                span,
+            })
+            .span(span));
+        }
+
         Ok(
             AstExpr::InterpolatedFunction(Arc::new(InterpolatedFunction {
                 name: identifier,
-                arguments: ArgumentInvocation {
-                    positional: arguments,
-                    named: IndexMap::new(),
-                    rest: None,
-                    keyword_rest: None,
-                    span: self.toks.span_from(before_args),
-                },
+                arguments,
                 span,
             }))
             .span(span),

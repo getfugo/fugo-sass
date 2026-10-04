@@ -36,13 +36,14 @@ test!(
     "$a: 1px;\n$b: 2px;\na {\n  color: min($a, $b);\n}\n",
     "a {\n  color: 1px;\n}\n"
 );
-error!(
+test!(
     min_arg_of_incorrect_type,
-    "$a: 1px;\n$b: 2px;\na {\n  color: min($a, $b, foo);\n}\n", "Error: foo is not a number."
+    "$a: 1px;\n$b: 2px;\na {\n  color: min($a, $b, foo);\n}\n",
+    "a {\n  color: min(1px, 2px, foo);\n}\n"
 );
 error!(
     min_too_few_args,
-    "a {\n  color: min();\n}\n", "Error: At least one argument must be passed."
+    "a {\n  color: min();\n}\n", "Error: Missing argument."
 );
 test!(
     min_incompatible_units,
@@ -89,13 +90,14 @@ test!(
     "a {\n  color: max(100% - lightness(red) - 2%);\n}\n",
     "a {\n  color: 48%;\n}\n"
 );
-error!(
+test!(
     max_arg_of_incorrect_type,
-    "$a: 1px;\n$b: 2px;\na {\n  color: max($a, $b, foo);\n}\n", "Error: foo is not a number."
+    "$a: 1px;\n$b: 2px;\na {\n  color: max($a, $b, foo);\n}\n",
+    "a {\n  color: max(1px, 2px, foo);\n}\n"
 );
 error!(
     max_too_few_args,
-    "a {\n  color: max();\n}\n", "Error: At least one argument must be passed."
+    "a {\n  color: max();\n}\n", "Error: Missing argument."
 );
 test!(
     max_incompatible_units,
@@ -155,11 +157,11 @@ test!(
 );
 error!(
     min_contains_special_fn_calc_with_plus_only,
-    "a {\n  color: min(calc(+));\n}\n", "Error: Expected digit."
+    "a {\n  color: min(calc(+));\n}\n", "Error: Expected expression."
 );
 error!(
     min_contains_special_fn_calc_space_separated_list,
-    "a {\n  color: min(calc(1  2));\n}\n", r#"Error: expected "+", "-", "*", "/", or ")"."#
+    "a {\n  color: min(calc(1  2));\n}\n", "Error: Missing math operator."
 );
 test!(
     min_contains_special_fn_var,
@@ -178,7 +180,7 @@ test!(
 );
 error!(
     min_contains_calc_contains_multiline_comment,
-    "a {\n  color: min(calc(1 /**/ 2));\n}\n", r#"Error: expected "+", "-", "*", "/", or ")"."#
+    "a {\n  color: min(calc(1 /**/ 2));\n}\n", "Error: Missing math operator."
 );
 test!(
     min_contains_calc_contains_multiline_comment_with_interpolation,
@@ -218,33 +220,40 @@ error!(
     min_hash_without_interpolation,
     "a {\n  color: min(#a);\n}\n", "Error: #a is not a number."
 );
-error!(
+test!(
     min_calc_no_parens,
-    "a {\n  color: min(calc);\n}\n", "Error: calc is not a number."
+    "a {\n  color: min(calc);\n}\n",
+    "a {\n  color: min(calc);\n}\n"
 );
-error!(
+test!(
     min_env_no_parens,
-    "a {\n  color: min(env);\n}\n", "Error: env is not a number."
+    "a {\n  color: min(env);\n}\n",
+    "a {\n  color: min(env);\n}\n"
 );
-error!(
+test!(
     min_var_no_parens,
-    "a {\n  color: min(var);\n}\n", "Error: var is not a number."
+    "a {\n  color: min(var);\n}\n",
+    "a {\n  color: min(var);\n}\n"
 );
-error!(
+test!(
     min_min_unfinished,
-    "a {\n  color: min(mi);\n}\n", "Error: mi is not a number."
+    "a {\n  color: min(mi);\n}\n",
+    "a {\n  color: min(mi);\n}\n"
 );
-error!(
+test!(
     min_max_unfinished,
-    "a {\n  color: min(ma);\n}\n", "Error: ma is not a number."
+    "a {\n  color: min(ma);\n}\n",
+    "a {\n  color: min(ma);\n}\n"
 );
-error!(
+test!(
     min_min_no_parens,
-    "a {\n  color: min(min);\n}\n", "Error: min is not a number."
+    "a {\n  color: min(min);\n}\n",
+    "a {\n  color: min(min);\n}\n"
 );
-error!(
+test!(
     min_max_no_parens,
-    "a {\n  color: min(max);\n}\n", "Error: max is not a number."
+    "a {\n  color: min(max);\n}\n",
+    "a {\n  color: min(max);\n}\n"
 );
 error!(
     min_min_invalid,
@@ -252,6 +261,5 @@ error!(
 );
 error!(
     min_calc_parens_no_args,
-    "a {\n  color: min(calc());\n}\n",
-    "Error: Expected number, variable, function, or calculation."
+    "a {\n  color: min(calc());\n}\n", "Error: Missing argument."
 );

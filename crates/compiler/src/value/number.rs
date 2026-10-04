@@ -62,17 +62,41 @@ pub(crate) fn fuzzy_as_int(num: f64) -> Option<i64> {
 
 pub(crate) fn fuzzy_round(number: f64) -> f64 {
     // If the number is within epsilon of X.5, round up (or down for negative
-    // numbers).
-    if number > 0.0 {
-        if fuzzy_less_than(number % 1.0, 0.5) {
+    // numbers). `%` is Dart's, Euclidean.
+    let fraction = number.rem_euclid(1.0);
+    let rounded = if number > 0.0 {
+        if fuzzy_less_than(fraction, 0.5) {
             number.floor()
         } else {
             number.ceil()
         }
-    } else if fuzzy_less_than_or_equals(number % 1.0, 0.5) {
+    } else if fuzzy_less_than_or_equals(fraction, 0.5) {
         number.floor()
     } else {
         number.ceil()
+    };
+    without_negative_zero(rounded)
+}
+
+/// `0` for `-0`: dart-sass rounds to integers, which have no negative zero.
+pub(crate) fn without_negative_zero(number: f64) -> f64 {
+    if number == 0.0 {
+        0.0
+    } else {
+        number
+    }
+}
+
+/// The sign of `value`, with `-0` negative (dart-sass's `signIncludingZero`).
+pub(crate) fn sign_including_zero(value: f64) -> f64 {
+    if value == 0.0 {
+        if value.is_sign_negative() {
+            -1.0
+        } else {
+            1.0
+        }
+    } else {
+        value.signum()
     }
 }
 
@@ -119,15 +143,15 @@ impl Number {
     }
 
     pub fn round(self) -> Self {
-        Self(self.0.round())
+        Self(without_negative_zero(self.0.round()))
     }
 
     pub fn ceil(self) -> Self {
-        Self(self.0.ceil())
+        Self(without_negative_zero(self.0.ceil()))
     }
 
     pub fn floor(self) -> Self {
-        Self(self.0.floor())
+        Self(without_negative_zero(self.0.floor()))
     }
 
     pub fn abs(self) -> Self {
@@ -378,9 +402,23 @@ fn real_mod(n1: f64, n2: f64) -> f64 {
     n1.rem_euclid(n2)
 }
 
+/// dart-sass's `moduloLikeSass`.
 fn modulo(n1: f64, n2: f64) -> f64 {
+    if n1.is_infinite() {
+        return f64::NAN;
+    }
+
+    if n2.is_infinite() {
+        return if sign_including_zero(n1) == n2.signum() {
+            n1
+        } else {
+            n2
+        };
+    }
+
     if n2 > 0.0 {
-        return real_mod(n1, n2);
+        // Dart's `%` gives `0`, not `-0`.
+        return without_negative_zero(real_mod(n1, n2));
     }
 
     if n2 == 0.0 {
