@@ -16,6 +16,8 @@
   (`ArgList::keywords()`, `ArgumentResult::named`, `AstForwardRule`'s shown and hidden members)
 - the official test suite runs with `cargo spec` (`crates/spec`), against `sass-spec` pinned to the
   specs of `dart-sass` 1.105.1; CI checks the failing specs against `crates/spec/failures.txt`
+- the indented syntax reports `Nothing may be indented beneath a @import rule.` (and `@return rule`)
+  where it panicked; `@import` and `@return` end their statements as `dart-sass` expects
 
 # 0.14.0
 

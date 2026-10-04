@@ -914,6 +914,8 @@ pub(crate) trait StylesheetParser<'a>: BaseParser + Sized {
             }
         }
 
+        self.expect_statement_separator(Some("@import rule"))?;
+
         Ok(AstStmt::ImportRule(AstImportRule { imports }))
     }
 
@@ -1072,7 +1074,7 @@ pub(crate) trait StylesheetParser<'a>: BaseParser + Sized {
 
     fn parse_return_rule(&mut self) -> SassResult<AstStmt> {
         let value = self.parse_expression(None, None, None)?;
-        self.expect_statement_separator(None)?;
+        self.expect_statement_separator(Some("@return rule"))?;
         Ok(AstStmt::Return(AstReturn {
             val: value.node,
             span: value.span,
