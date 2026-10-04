@@ -41,6 +41,7 @@ limit, so the next change doesn't need a split.
 
 ## Toolchain
 
+- No `unsafe` code: every crate root has `#![forbid(unsafe_code)]`.
 - The root `Cargo.toml` holds what the crates share, in `[workspace.package]` (edition 2024,
   `rust-version` 1.99, the version) and `[workspace.dependencies]` (every dependency's version);
   a crate inherits them with `<key>.workspace = true`. Change versions there, not in a crate.

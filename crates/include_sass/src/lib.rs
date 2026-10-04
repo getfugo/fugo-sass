@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "nightly", feature(track_path))]
+#![forbid(unsafe_code)]
 
 use std::{cell::RefCell, collections::HashSet, path::PathBuf};
 

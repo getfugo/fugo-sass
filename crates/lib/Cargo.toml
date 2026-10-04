@@ -61,4 +61,3 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 
 [dev-dependencies]
 tempfile.workspace = true
-paste.workspace = true

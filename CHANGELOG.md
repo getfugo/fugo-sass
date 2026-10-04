@@ -91,6 +91,9 @@
   Dependencies are at their latest versions: `rand` 0.10, `phf` 0.14, `syn` 3, `clap` 4.6,
   `indexmap` 2.14; `once_cell` is replaced by `std::sync::LazyLock`, and `getrandom` (with its
   `wasm_js` backend) is only a dependency for WebAssembly targets
+- no `unsafe` code: every crate forbids it. Interned strings (names, units) are stored once for
+  the whole process and shared by its threads, where each thread had its own; the `lasso` and
+  `paste` (unmaintained, RUSTSEC-2024-0436) dependencies are gone
 
 # 0.14.0
 
