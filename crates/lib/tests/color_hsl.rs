@@ -173,7 +173,7 @@ error!(
     "a {
         color: lighten(crimson, (0/0));
     }",
-    "Error: $amount: Expected NaN to be within 0 and 100."
+    "Error: $amount: Expected calc(NaN) to be within 0 and 100."
 );
 test!(
     darken_named_args,
@@ -305,7 +305,7 @@ test!(
 test!(
     adjust_hue_nan_get_hue,
     "a {\n  color: hue(adjust-hue(hsla(200, 50%, 50%), (0/0)));\n}\n",
-    "a {\n  color: NaNdeg;\n}\n"
+    "a {\n  color: calc(NaN * 1deg);\n}\n"
 );
 test!(
     hsl_special_two_arg_var_first,

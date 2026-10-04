@@ -13,7 +13,7 @@ test!(
 test!(
     module_variables_builtin,
     "@use 'sass:meta';\n@use 'sass:math';\na {\n  color: inspect(map-get(meta.module-variables(math), 'e'));\n}\n",
-    "a {\n  color: 2.7182818285;\n}\n"
+    "a {\n  color: 2.718281828459045;\n}\n"
 );
 test!(
     global_var_exists_module,

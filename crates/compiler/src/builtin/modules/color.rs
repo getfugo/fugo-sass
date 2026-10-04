@@ -2,7 +2,7 @@ use crate::builtin::{
     color::{
         hsl::{complement, grayscale, hue, invert, lightness, saturation},
         hwb::{blackness, hwb, whiteness},
-        opacity::alpha,
+        opacity::{alpha, opacity},
         other::{adjust_color, change_color, ie_hex_str, scale_color},
         rgb::{blue, green, mix, red},
     },
@@ -22,6 +22,7 @@ pub(crate) fn declare(f: &mut Module) {
     f.insert_builtin("invert", invert);
     f.insert_builtin("lightness", lightness);
     f.insert_builtin("mix", mix);
+    f.insert_builtin("opacity", opacity);
     f.insert_builtin("red", red);
     f.insert_builtin("saturation", saturation);
     f.insert_builtin("scale", scale_color);

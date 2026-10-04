@@ -195,7 +195,7 @@ test!(
 test!(
     zero_div_zero_is_nan,
     "a {\n  color: (0 / 0);\n}\n",
-    "a {\n  color: NaN;\n}\n"
+    "a {\n  color: calc(NaN);\n}\n"
 );
 test!(
     divide_two_calculations,
@@ -267,7 +267,7 @@ test!(
     a {
         color: inspect((a: $a))
     }",
-    "a {\n  color: (a: 0.6666666667);\n}\n"
+    "a {\n  color: (a: 0.6666666666666666);\n}\n"
 );
 test!(
     quoted_string_div_calculation,

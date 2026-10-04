@@ -8,11 +8,11 @@ test!(
 );
 error!(
     calc_newline,
-    "a {\n  color: calc(\n);\n}\n", "Error: Expected number, variable, function, or calculation."
+    "a {\n  color: calc(\n);\n}\n", "Error: Missing argument."
 );
 error!(
     calc_multiple_args,
-    "a {\n  color: calc(1, 2, a, b, c);\n}\n", r#"Error: expected "+", "-", "*", "/", or ")"."#
+    "a {\n  color: calc(1, 2, a, b, c);\n}\n", "Error: Only 1 argument allowed, but 5 were passed."
 );
 test!(
     calc_does_evaluate_arithmetic,
@@ -36,21 +36,20 @@ test!(
 );
 error!(
     calc_retains_silent_comment,
-    "a {\n  color: calc(//);\n}\n", "Error: Expected number, variable, function, or calculation."
+    "a {\n  color: calc(//);\n}\n", "Error: expected \")\"."
 );
 error!(
     calc_retains_multiline_comment,
-    "a {\n  color: calc(/**/);\n}\n", "Error: Expected number, variable, function, or calculation."
+    "a {\n  color: calc(/**/);\n}\n", "Error: Missing argument."
 );
 error!(
     calc_complex_unit,
     "a {\n  color: calc(1% + 1px * 2px);\n}\n",
-    "Error: Number 2px*px isn't compatible with CSS calculations."
+    "Error: Number calc(2px * 1px) isn't compatible with CSS calculations."
 );
 error!(
     calc_nested_parens,
-    "a {\n  color: calc((((()))));\n}\n",
-    "Error: Expected number, variable, function, or calculation."
+    "a {\n  color: calc((((()))));\n}\n", "Error: This expression can't be used in a calculation."
 );
 test!(
     calc_invalid_arithmetic,
@@ -79,19 +78,19 @@ test!(
 );
 error!(
     calc_quoted_string,
-    r#"a { color: calc("\ "); }"#, "Error: Expected number, variable, function, or calculation."
+    r#"a { color: calc("\ "); }"#, "Error: This expression can't be used in a calculation."
 );
 error!(
     calc_quoted_string_single_quoted_paren,
-    r#"a {color: calc(")");}"#, "Error: Expected number, variable, function, or calculation."
+    r#"a {color: calc(")");}"#, "Error: This expression can't be used in a calculation."
 );
 error!(
     calc_quoted_string_single_quotes,
-    "a {\n  color: calc('a');\n}\n", "Error: Expected number, variable, function, or calculation."
+    "a {\n  color: calc('a');\n}\n", "Error: This expression can't be used in a calculation."
 );
 error!(
     calc_hash_no_interpolation,
-    "a {\n  color: calc(#);\n}\n", "Error: Expected number, variable, function, or calculation."
+    "a {\n  color: calc(#);\n}\n", "Error: Expected identifier."
 );
 error!(
     calc_boolean,
@@ -304,20 +303,21 @@ test!(
 test!(
     removes_superfluous_parens_around_function_call_in_calc,
     "a {\n  color: calc((foo(--a)) + 1rem);\n}\n",
-    "a {\n  color: calc(foo(--a) + 1rem);\n}\n"
+    "a {\n  color: calc((foo(--a)) + 1rem);\n}\n"
 );
 test!(
     calculation_inside_calc,
     "a {\n  color: calc(calc(1px + 1rem) * calc(2px - 2in));\n}\n",
     "a {\n  color: calc((1px + 1rem) * -190px);\n}\n"
 );
-error!(
+test!(
     escaped_close_paren_inside_calc,
-    "a {\n  color: calc(\\));\n}\n", r#"Error: Expected "(" or "."."#
+    "a {\n  color: calc(\\));\n}\n",
+    "a {\n  color: calc(\\));\n}\n"
 );
 error!(
     nothing_after_last_arg,
-    "a { color: calc(1 + 1", r#"Error: expected "+", "-", "*", "/", or ")"."#
+    "a { color: calc(1 + 1", r#"Error: expected ")"."#
 );
 error!(
     progid_nothing_after,

@@ -125,7 +125,7 @@ test!(
 test!(
     inspect_mul_units,
     "a {\n  color: inspect(1em * 1px);\n}\n",
-    "a {\n  color: 1em*px;\n}\n"
+    "a {\n  color: calc(1em * 1px);\n}\n"
 );
 test!(
     inspect_map_with_map_key_and_value,

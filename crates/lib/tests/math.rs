@@ -14,17 +14,17 @@ test!(
 test!(
     percentage_nan,
     "a {\n  color: percentage((0/0));\n}\n",
-    "a {\n  color: NaN%;\n}\n"
+    "a {\n  color: calc(NaN * 1%);\n}\n"
 );
 test!(
     percentage_infinity,
     "a {\n  color: percentage((1/0));\n}\n",
-    "a {\n  color: Infinity%;\n}\n"
+    "a {\n  color: calc(infinity * 1%);\n}\n"
 );
 test!(
     percentage_neg_infinity,
     "a {\n  color: percentage((-1/0));\n}\n",
-    "a {\n  color: -Infinity%;\n}\n"
+    "a {\n  color: calc(-infinity * 1%);\n}\n"
 );
 test!(
     integer_division,
@@ -89,17 +89,17 @@ test!(
 test!(
     abs_nan,
     "a {\n  color: abs((0/0));\n}\n",
-    "a {\n  color: NaN;\n}\n"
+    "a {\n  color: calc(NaN);\n}\n"
 );
 test!(
     abs_infinity,
     "a {\n  color: abs((1/0));\n}\n",
-    "a {\n  color: Infinity;\n}\n"
+    "a {\n  color: calc(infinity);\n}\n"
 );
 test!(
     abs_neg_infinity,
     "a {\n  color: abs((-1/0));\n}\n",
-    "a {\n  color: Infinity;\n}\n"
+    "a {\n  color: calc(infinity);\n}\n"
 );
 test!(
     comparable_unitless,
@@ -147,9 +147,10 @@ error!(
     percentage_non_number_arg,
     "a {\n  color: percentage(a);\n}\n", "Error: $number: a is not a number."
 );
-error!(
+test!(
     round_non_number_arg,
-    "a {\n  color: round(a);\n}\n", "Error: $number: a is not a number."
+    "a {\n  color: round(a);\n}\n",
+    "a {\n  color: round(a);\n}\n"
 );
 error!(
     ceil_non_number_arg,
@@ -159,9 +160,10 @@ error!(
     floor_non_number_arg,
     "a {\n  color: floor(a);\n}\n", "Error: $number: a is not a number."
 );
-error!(
+test!(
     abs_non_number_arg,
-    "a {\n  color: abs(a);\n}\n", "Error: $number: a is not a number."
+    "a {\n  color: abs(a);\n}\n",
+    "a {\n  color: abs(a);\n}\n"
 );
 error!(
     comparable_non_number_arg_both,
@@ -181,7 +183,7 @@ error!(
 );
 error!(
     round_no_args,
-    "a {\n  color: round();\n}\n", "Error: Missing argument $number."
+    "a {\n  color: round();\n}\n", "Error: Missing argument."
 );
 error!(
     ceil_no_args,
@@ -193,7 +195,7 @@ error!(
 );
 error!(
     abs_no_args,
-    "a {\n  color: abs();\n}\n", "Error: Missing argument $number."
+    "a {\n  color: abs();\n}\n", "Error: Missing argument."
 );
 error!(
     comparable_no_args,

@@ -23,7 +23,7 @@ use crate::{
         },
         GLOBAL_FUNCTIONS,
     },
-    common::{unvendor, BinaryOp, Identifier, ListSeparator, QuoteKind, UnaryOp},
+    common::{unvendor, BinaryOp, Brackets, Identifier, ListSeparator, QuoteKind, UnaryOp},
     error::{SassError, SassResult},
     interner::InternedString,
     lexer::Lexer,
@@ -35,6 +35,7 @@ use crate::{
         ComplexSelectorComponent, ExtendRule, ExtendedSelector, ExtensionStore, SelectorList,
         SelectorParser,
     },
+    serializer::serialize_calculation_arg,
     utils::{to_sentence, trim_ascii},
     value::{
         ArgList, CalculationArg, CalculationName, Number, SassCalculation, SassFunction, SassMap,
@@ -2463,18 +2464,48 @@ impl<'a> Visitor<'a> {
     fn visit_function_call_expr(&mut self, func_call: FunctionCallExpr) -> SassResult<Value> {
         let name = func_call.name;
 
-        let func = match self.env.get_fn(name, func_call.namespace)? {
+        // As dart-sass's `visitFunctionExpression`: a Sass function of the name wins; then the
+        // calculations; then the built-in and plain CSS functions.
+        let func = if self.is_plain_css {
+            None
+        } else {
+            self.env.get_fn(name, func_call.namespace)?
+        };
+        let func = match func {
             Some(func) => func,
             None => {
-                if let Some(f) = self.options.custom_fns.get(name.as_str()) {
+                if func_call.namespace.is_some() {
+                    return Err(("Undefined function.", func_call.span).into());
+                }
+
+                let lower = name.as_str().to_ascii_lowercase();
+                match lower.as_str() {
+                    "min" | "max" | "round" | "abs"
+                        if func_call.arguments.named.is_empty()
+                            && func_call.arguments.rest.is_none()
+                            && func_call
+                                .arguments
+                                .positional
+                                .iter()
+                                .all(AstExpr::is_calculation_safe) =>
+                    {
+                        return self.visit_calculation(&func_call, Some(&lower));
+                    }
+                    "calc" | "clamp" | "hypot" | "sin" | "cos" | "tan" | "asin" | "acos"
+                    | "atan" | "sqrt" | "exp" | "sign" | "mod" | "rem" | "atan2" | "pow"
+                    | "log" | "calc-size" => {
+                        return self.visit_calculation(&func_call, None);
+                    }
+                    _ => {}
+                }
+
+                if self.is_plain_css {
+                    SassFunction::Plain { name }
+                } else if let Some(f) = self.options.custom_fns.get(name.as_str()) {
                     SassFunction::Builtin(f.clone(), name)
                 } else if let Some(f) = GLOBAL_FUNCTIONS.get(name.as_str()) {
                     SassFunction::Builtin(f.clone(), name)
                 } else {
-                    if func_call.namespace.is_some() {
-                        return Err(("Undefined function.", func_call.span).into());
-                    }
-
                     SassFunction::Plain { name }
                 }
             }
@@ -2553,9 +2584,6 @@ impl<'a> Visitor<'a> {
             )?,
             AstExpr::True => Value::True,
             AstExpr::False => Value::False,
-            AstExpr::Calculation { name, args } => {
-                self.visit_calculation_expr(name, args, self.empty_span)?
-            }
             AstExpr::FunctionCall(func_call) => self.visit_function_call_expr(func_call)?,
             AstExpr::If(if_expr) => self.visit_ternary((*if_expr).clone())?,
             AstExpr::InterpolatedFunction(func) => {
@@ -2563,7 +2591,14 @@ impl<'a> Visitor<'a> {
             }
             AstExpr::Map(map) => self.visit_map(map)?,
             AstExpr::Null => Value::Null,
-            AstExpr::Paren(expr) => self.visit_expr((*expr).clone())?,
+            AstExpr::Paren(expr) => {
+                if self.is_plain_css {
+                    return Err(
+                        ("Parentheses aren't allowed in plain CSS.", self.empty_span).into(),
+                    );
+                }
+                self.visit_expr((*expr).clone())?
+            }
             AstExpr::ParentSelector => self.visit_parent_selector(),
             AstExpr::UnaryOp(op, expr, span) => self.visit_unary_op(op, (*expr).clone(), span)?,
             AstExpr::Variable { name, namespace } => self.env.get_var(name, namespace)?,
@@ -2574,58 +2609,224 @@ impl<'a> Visitor<'a> {
         })
     }
 
+    /// Evaluates `func_call` as a calculation (dart-sass's `_visitCalculation`).
+    /// `in_legacy_sass_function` is the name of the global Sass function the call could have
+    /// been (`min`, `max`, `round`, `abs`), which allows unitless numbers to mix with numbers
+    /// with units, for backwards compatibility.
+    fn visit_calculation(
+        &mut self,
+        func_call: &FunctionCallExpr,
+        in_legacy_sass_function: Option<&str>,
+    ) -> SassResult<Value> {
+        let span = func_call.span;
+        let arguments = &func_call.arguments;
+        if !arguments.named.is_empty() {
+            return Err(("Keyword arguments can't be used with calculations.", span).into());
+        } else if arguments.rest.is_some() {
+            return Err(("Rest arguments can't be used with calculations.", span).into());
+        }
+
+        let lower = func_call.name.as_str().to_ascii_lowercase();
+        let name = CalculationName::from_lowercase(&lower)
+            .unwrap_or_else(|| unreachable!("unknown calculation name {lower}"));
+        Self::check_calculation_arguments(name, arguments.positional.len(), span)?;
+
+        let mut args = arguments
+            .positional
+            .iter()
+            .map(|arg| self.visit_calculation_value(arg, in_legacy_sass_function, span))
+            .collect::<SassResult<Vec<_>>>()?;
+
+        if self.flags.in_supports_declaration() {
+            return Ok(Value::Calculation(SassCalculation::unsimplified(
+                name, args,
+            )));
+        }
+
+        let options = self.options;
+        let mut take = || (!args.is_empty()).then(|| args.remove(0));
+        let first = take().unwrap();
+        match name {
+            CalculationName::Calc => Ok(SassCalculation::calc(first)),
+            CalculationName::Sqrt
+            | CalculationName::Sin
+            | CalculationName::Cos
+            | CalculationName::Tan
+            | CalculationName::Asin
+            | CalculationName::Acos
+            | CalculationName::Atan => SassCalculation::single_argument(name, first, options, span),
+            CalculationName::Abs => {
+                let mut warnings = Vec::new();
+                let value = SassCalculation::abs(first, &mut |m: &str| warnings.push(m.to_owned()));
+                for warning in warnings {
+                    self.emit_warning(&warning, span);
+                }
+                Ok(value)
+            }
+            CalculationName::Exp => SassCalculation::exp(first, options, span),
+            CalculationName::Sign => Ok(SassCalculation::sign(first)),
+            CalculationName::Min | CalculationName::Max | CalculationName::Hypot => {
+                let rest = std::iter::from_fn(take);
+                let all: Vec<_> = std::iter::once(first).chain(rest).collect();
+                match name {
+                    CalculationName::Min => SassCalculation::min(all, options, span),
+                    CalculationName::Max => SassCalculation::max(all, options, span),
+                    _ => SassCalculation::hypot(all, options, span),
+                }
+            }
+            CalculationName::Pow => SassCalculation::pow(first, take(), options, span),
+            CalculationName::Atan2 => SassCalculation::atan2(first, take(), options, span),
+            CalculationName::Log => SassCalculation::log(first, take(), options, span),
+            CalculationName::Mod => SassCalculation::modulus(first, take(), options, span),
+            CalculationName::Rem => SassCalculation::rem(first, take(), options, span),
+            CalculationName::Round => {
+                let (second, third) = (take(), take());
+                let mut warnings = Vec::new();
+                let value = SassCalculation::round(
+                    first,
+                    second,
+                    third,
+                    in_legacy_sass_function,
+                    options,
+                    span,
+                    &mut |m: &str| warnings.push(m.to_owned()),
+                );
+                for warning in warnings {
+                    self.emit_warning(&warning, span);
+                }
+                value
+            }
+            CalculationName::Clamp => {
+                let (value, max) = (take(), take());
+                SassCalculation::clamp(first, value, max, options, span)
+            }
+            CalculationName::CalcSize => SassCalculation::calc_size(first, take(), span),
+        }
+    }
+
+    /// Verifies that a calculation has the right number of arguments.
+    fn check_calculation_arguments(
+        name: CalculationName,
+        len: usize,
+        span: Span,
+    ) -> SassResult<()> {
+        let max_args = match name {
+            CalculationName::Calc
+            | CalculationName::Sqrt
+            | CalculationName::Sin
+            | CalculationName::Cos
+            | CalculationName::Tan
+            | CalculationName::Asin
+            | CalculationName::Acos
+            | CalculationName::Atan
+            | CalculationName::Abs
+            | CalculationName::Exp
+            | CalculationName::Sign => Some(1),
+            CalculationName::Min | CalculationName::Max | CalculationName::Hypot => None,
+            CalculationName::Pow
+            | CalculationName::Atan2
+            | CalculationName::Log
+            | CalculationName::Mod
+            | CalculationName::Rem
+            | CalculationName::CalcSize => Some(2),
+            CalculationName::Round | CalculationName::Clamp => Some(3),
+        };
+        if len == 0 {
+            return Err(("Missing argument.", span).into());
+        }
+        if let Some(max) = max_args {
+            if len > max {
+                let argument = if max == 1 { "argument" } else { "arguments" };
+                let was = if len == 1 { "was" } else { "were" };
+                return Err((
+                    format!("Only {max} {argument} allowed, but {len} {was} passed."),
+                    span,
+                )
+                    .into());
+            }
+        }
+        Ok(())
+    }
+
+    /// Evaluates `expr` as an argument of a calculation (dart-sass's
+    /// `_visitCalculationExpression`).
     fn visit_calculation_value(
         &mut self,
-        expr: AstExpr,
-        in_min_or_max: bool,
+        expr: &AstExpr,
+        in_legacy_sass_function: Option<&str>,
         span: Span,
     ) -> SassResult<CalculationArg> {
         Ok(match expr {
-            AstExpr::Paren(inner) => match &*inner {
-                AstExpr::FunctionCall(FunctionCallExpr { ref name, .. })
-                    if name.as_str().to_ascii_lowercase() == "var" =>
-                {
-                    let result =
-                        self.visit_calculation_value((*inner).clone(), in_min_or_max, span)?;
-
-                    if let CalculationArg::String(text) = result {
-                        CalculationArg::String(format!("({})", text))
-                    } else {
-                        result
+            AstExpr::Paren(inner) => {
+                match self.visit_calculation_value(inner, in_legacy_sass_function, span)? {
+                    CalculationArg::String(text) => CalculationArg::String(format!("({text})")),
+                    result => result,
+                }
+            }
+            AstExpr::String(StringExpr(text, QuoteKind::None), ..)
+                if expr.is_calculation_safe() =>
+            {
+                let constant = text.as_plain().and_then(|plain| {
+                    Some(match plain.to_ascii_lowercase().as_str() {
+                        "pi" => std::f64::consts::PI,
+                        "e" => std::f64::consts::E,
+                        "infinity" => f64::INFINITY,
+                        "-infinity" => f64::NEG_INFINITY,
+                        "nan" => f64::NAN,
+                        _ => return None,
+                    })
+                });
+                match constant {
+                    Some(n) => CalculationArg::Number(SassNumber::new_unitless(n)),
+                    None => {
+                        CalculationArg::String(self.perform_interpolation(text.clone(), false)?)
                     }
                 }
-                _ => self.visit_calculation_value((*inner).clone(), in_min_or_max, span)?,
-            },
-            AstExpr::String(string_expr, _span) => {
-                debug_assert!(string_expr.1 == QuoteKind::None);
-                CalculationArg::Interpolation(self.perform_interpolation(string_expr.0, false)?)
             }
-            AstExpr::BinaryOp(binop) => SassCalculation::operate_internal(
-                binop.op,
-                self.visit_calculation_value(binop.lhs.clone(), in_min_or_max, span)?,
-                self.visit_calculation_value(binop.rhs.clone(), in_min_or_max, span)?,
-                in_min_or_max,
-                !self.flags.in_supports_declaration(),
-                self.options,
-                span,
-            )?,
-            AstExpr::Number { .. }
-            | AstExpr::Calculation { .. }
-            | AstExpr::Variable { .. }
-            | AstExpr::FunctionCall { .. }
-            | AstExpr::If(..) => {
-                let result = self.visit_expr(expr)?;
-                match result {
-                    Value::Dimension(SassNumber {
-                        num,
-                        unit,
-                        as_slash,
-                    }) => CalculationArg::Number(SassNumber {
-                        num,
-                        unit,
-                        as_slash,
-                    }),
-                    Value::Calculation(calc) => CalculationArg::Calculation(calc),
+            AstExpr::BinaryOp(binop) => {
+                if matches!(binop.op, BinaryOp::Plus | BinaryOp::Minus)
+                    && !binop.whitespace_around_operator
+                {
+                    return Err((
+                        "\"+\" and \"-\" must be surrounded by whitespace in calculations.",
+                        binop.span,
+                    )
+                        .into());
+                }
+                if !matches!(
+                    binop.op,
+                    BinaryOp::Plus | BinaryOp::Minus | BinaryOp::Mul | BinaryOp::Div
+                ) {
+                    return Err(
+                        ("This operation can't be used in a calculation.", binop.span).into(),
+                    );
+                }
+                let lhs =
+                    self.visit_calculation_value(&binop.lhs, in_legacy_sass_function, span)?;
+                let rhs =
+                    self.visit_calculation_value(&binop.rhs, in_legacy_sass_function, span)?;
+                let mut warnings = Vec::new();
+                let result = SassCalculation::operate_internal(
+                    binop.op,
+                    lhs,
+                    rhs,
+                    in_legacy_sass_function,
+                    !self.flags.in_supports_declaration(),
+                    self.options,
+                    binop.span,
+                    &mut |m: &str| warnings.push(m.to_owned()),
+                );
+                for warning in warnings {
+                    self.emit_warning(&warning, binop.span);
+                }
+                result?
+            }
+            // In plain CSS, function calls are `InterpolatedFunction`s whose names have no
+            // interpolation; dart-sass parses them as function calls.
+            AstExpr::InterpolatedFunction(func)
+                if self.is_plain_css && func.name.as_plain().is_some() =>
+            {
+                match self.visit_expr(expr.clone())? {
                     Value::String(s, QuoteKind::None) => CalculationArg::String(s),
                     value => {
                         return Err((
@@ -2639,49 +2840,96 @@ impl<'a> Visitor<'a> {
                     }
                 }
             }
-            v => unreachable!("{:?}", v),
+            AstExpr::Number { .. }
+            | AstExpr::Variable { .. }
+            | AstExpr::FunctionCall(..)
+            | AstExpr::If(..) => match self.visit_expr(expr.clone())? {
+                Value::Dimension(n) => CalculationArg::Number(n),
+                Value::Calculation(calc) => CalculationArg::Calculation(calc),
+                Value::String(s, QuoteKind::None) => CalculationArg::String(s),
+                value => {
+                    return Err((
+                        format!(
+                            "Value {} can't be used in a calculation.",
+                            value.inspect(span)?
+                        ),
+                        span,
+                    )
+                        .into())
+                }
+            },
+            AstExpr::List(list)
+                if list.separator == ListSeparator::Space
+                    && list.brackets == Brackets::None
+                    && list.elems.len() > 1 =>
+            {
+                let mut elements = list
+                    .elems
+                    .iter()
+                    .map(|elem| {
+                        self.visit_calculation_value(&elem.node, in_legacy_sass_function, span)
+                    })
+                    .collect::<SassResult<Vec<_>>>()?;
+
+                Self::check_adjacent_calculation_values(&elements, list)?;
+
+                for (element, node) in elements.iter_mut().zip(&list.elems) {
+                    if matches!(element, CalculationArg::Operation { .. })
+                        && matches!(node.node, AstExpr::Paren(..))
+                    {
+                        let text = serialize_calculation_arg(element, self.options, span)?;
+                        *element = CalculationArg::String(format!("({text})"));
+                    }
+                }
+
+                CalculationArg::String(
+                    elements
+                        .iter()
+                        .map(|element| serialize_calculation_arg(element, self.options, span))
+                        .collect::<SassResult<Vec<_>>>()?
+                        .join(" "),
+                )
+            }
+            _ => {
+                debug_assert!(!expr.is_calculation_safe());
+                return Err(("This expression can't be used in a calculation.", span).into());
+            }
         })
     }
 
-    fn visit_calculation_expr(
-        &mut self,
-        name: CalculationName,
-        args: Vec<AstExpr>,
-        span: Span,
-    ) -> SassResult<Value> {
-        let mut args = args
-            .into_iter()
-            .map(|arg| self.visit_calculation_value(arg, name.in_min_or_max(), span))
-            .collect::<SassResult<Vec<_>>>()?;
-
-        if self.flags.in_supports_declaration() {
-            return Ok(Value::Calculation(SassCalculation::unsimplified(
-                name, args,
-            )));
-        }
-
-        match name {
-            CalculationName::Calc => {
-                debug_assert_eq!(args.len(), 1);
-                Ok(SassCalculation::calc(args.remove(0)))
+    /// Throws if two adjacent values of a space-separated list in a calculation are both not
+    /// strings.
+    fn check_adjacent_calculation_values(
+        elements: &[CalculationArg],
+        list: &ListExpr,
+    ) -> SassResult<()> {
+        for i in 1..elements.len() {
+            if matches!(elements[i - 1], CalculationArg::String(..))
+                || matches!(elements[i], CalculationArg::String(..))
+            {
+                continue;
             }
-            CalculationName::Min => SassCalculation::min(args, self.options, span),
-            CalculationName::Max => SassCalculation::max(args, self.options, span),
-            CalculationName::Clamp => {
-                let min = args.remove(0);
-                let value = if args.is_empty() {
-                    None
-                } else {
-                    Some(args.remove(0))
-                };
-                let max = if args.is_empty() {
-                    None
-                } else {
-                    Some(args.remove(0))
-                };
-                SassCalculation::clamp(min, value, max, self.options, span)
+            let current = &list.elems[i];
+            let looks_unary = match &current.node {
+                AstExpr::UnaryOp(UnaryOp::Neg | UnaryOp::Plus, ..) => true,
+                AstExpr::Number { n, .. } => n.0 < 0.0,
+                _ => false,
+            };
+            // `calc(1 -2)` parses as a list whose second value is a negative number.
+            if looks_unary {
+                return Err((
+                    "\"+\" and \"-\" must be surrounded by whitespace in calculations.",
+                    current.span,
+                )
+                    .into());
             }
+            return Err((
+                "Missing math operator.",
+                list.elems[i - 1].span.merge(current.span),
+            )
+                .into());
         }
+        Ok(())
     }
 
     fn visit_unary_op(&mut self, op: UnaryOp, expr: AstExpr, span: Span) -> SassResult<Value> {
@@ -2793,6 +3041,39 @@ impl<'a> Visitor<'a> {
         Ok(Value::Map(sass_map))
     }
 
+    /// Whether `node` can be a component of a slash-separated number (dart-sass's
+    /// `_operandAllowsSlash`): a function call only when it is a calculation.
+    fn operand_allows_slash(&self, node: &AstExpr) -> bool {
+        match node {
+            AstExpr::FunctionCall(call) => {
+                call.namespace.is_none()
+                    && matches!(
+                        call.name.as_str().to_ascii_lowercase().as_str(),
+                        "calc"
+                            | "clamp"
+                            | "hypot"
+                            | "sin"
+                            | "cos"
+                            | "tan"
+                            | "asin"
+                            | "acos"
+                            | "atan"
+                            | "sqrt"
+                            | "exp"
+                            | "sign"
+                            | "mod"
+                            | "rem"
+                            | "atan2"
+                            | "pow"
+                            | "log"
+                            | "calc-size"
+                    )
+                    && matches!(self.env.get_fn(call.name, None), Ok(None))
+            }
+            _ => true,
+        }
+    }
+
     fn visit_bin_op(
         &mut self,
         lhs: AstExpr,
@@ -2801,6 +3082,14 @@ impl<'a> Visitor<'a> {
         allows_slash: bool,
         span: Span,
     ) -> SassResult<Value> {
+        // dart-sass decides at parse time whether operands may form a slash-separated number,
+        // except for function calls, which may turn out to be calculations.
+        if self.is_plain_css && !matches!(op, BinaryOp::SingleEq | BinaryOp::Div) {
+            return Err(("Operators aren't allowed in plain CSS.", span).into());
+        }
+
+        let allows_slash =
+            allows_slash && self.operand_allows_slash(&lhs) && self.operand_allows_slash(&rhs);
         let left = self.visit_expr(lhs)?;
 
         Ok(match op {

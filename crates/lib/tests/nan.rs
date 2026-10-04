@@ -11,17 +11,17 @@ error!(
 );
 error!(
     unitless_nan_str_insert_index,
-    "a {\n  color: str-insert(\"\", \"\", (0/0));\n}\n", "Error: $index: NaN is not an int."
+    "a {\n  color: str-insert(\"\", \"\", (0/0));\n}\n", "Error: $index: calc(NaN) is not an int."
 );
 test!(
     unitless_nan_percentage_number,
     "a {\n  color: percentage((0/0));\n}\n",
-    "a {\n  color: NaN%;\n}\n"
+    "a {\n  color: calc(NaN * 1%);\n}\n"
 );
 test!(
     unitless_nan_abs_number,
     "a {\n  color: abs((0/0));\n}\n",
-    "a {\n  color: NaN;\n}\n"
+    "a {\n  color: calc(NaN);\n}\n"
 );
 error!(
     unitless_nan_round_number,
@@ -38,20 +38,20 @@ error!(
 error!(
     #[cfg(feature = "random")]
     unitless_nan_random_limit,
-    "a {\n  color: random((0/0));\n}\n", "Error: $limit: NaN is not an int."
+    "a {\n  color: random((0/0));\n}\n", "Error: $limit: calc(NaN) is not an int."
 );
 error!(
     unitless_nan_nth_n,
-    "a {\n  color: nth([a], (0/0));\n}\n", "Error: $n: NaN is not an int."
+    "a {\n  color: nth([a], (0/0));\n}\n", "Error: $n: calc(NaN) is not an int."
 );
 error!(
     unitless_nan_set_nth_n,
-    "a {\n  color: set-nth([a], (0/0), b);\n}\n", "Error: $n: NaN is not an int."
+    "a {\n  color: set-nth([a], (0/0), b);\n}\n", "Error: $n: calc(NaN) is not an int."
 );
 test!(
     unitless_nan_min_first_arg,
     "$n: (0/0);\na {\n  color: min($n, 1px);\n}\n",
-    "a {\n  color: NaN;\n}\n"
+    "a {\n  color: calc(NaN);\n}\n"
 );
 test!(
     unitless_nan_min_last_arg,
@@ -66,7 +66,7 @@ test!(
 test!(
     unitless_nan_max_first_arg,
     "$n: (0/0);\na {\n  color: max($n, 1px);\n}\n",
-    "a {\n  color: NaN;\n}\n"
+    "a {\n  color: calc(NaN);\n}\n"
 );
 test!(
     unitless_nan_max_last_arg,
@@ -81,22 +81,22 @@ test!(
 error!(
     unitful_nan_str_slice_start,
     "@use \"sass:math\";\na {\n  color: str-slice(\"\", math.acos(2));\n}\n",
-    "Error: $start-at: Expected NaNdeg to have no units."
+    "Error: $start-at: Expected calc(NaN * 1deg) to have no units."
 );
 error!(
     unitful_nan_str_slice_end,
     "@use \"sass:math\";\na {\n  color: str-slice(\"\", 0, math.acos(2));\n}\n",
-    "Error: $end-at: Expected NaNdeg to have no units."
+    "Error: $end-at: Expected calc(NaN * 1deg) to have no units."
 );
 error!(
     unitful_nan_str_insert_index,
     "@use \"sass:math\";\na {\n  color: str-insert(\"\", \"\", math.acos(2));\n}\n",
-    "Error: $index: Expected NaNdeg to have no units."
+    "Error: $index: Expected calc(NaN * 1deg) to have no units."
 );
 error!(
     unitful_nan_percentage,
     "@use \"sass:math\";\na {\n  color: percentage(math.acos(2));\n}\n",
-    "Error: $number: Expected NaNdeg to have no units."
+    "Error: $number: Expected calc(NaN * 1deg) to have no units."
 );
 error!(
     unitful_nan_round,
@@ -113,66 +113,66 @@ error!(
 test!(
     unitful_nan_abs,
     "@use \"sass:math\";\na {\n  color: abs(math.acos(2));\n}\n",
-    "a {\n  color: NaNdeg;\n}\n"
+    "a {\n  color: calc(NaN * 1deg);\n}\n"
 );
 error!(
     #[cfg(feature = "random")]
     unitful_nan_random,
     "@use \"sass:math\";\na {\n  color: random(math.acos(2));\n}\n",
-    "Error: $limit: NaNdeg is not an int."
+    "Error: $limit: calc(NaN * 1deg) is not an int."
 );
 error!(
     unitful_nan_min_first_arg,
     "@use \"sass:math\";\na {\n  color: min(math.acos(2), 1px);\n}\n",
-    "Error: NaNdeg and 1px are incompatible."
+    "Error: calc(NaN * 1deg) and 1px are incompatible."
 );
 error!(
     unitful_nan_min_last_arg,
     "@use \"sass:math\";\na {\n  color: min(1px, math.acos(2));\n}\n",
-    "Error: 1px and NaNdeg are incompatible."
+    "Error: 1px and calc(NaN * 1deg) are incompatible."
 );
 error!(
     unitful_nan_min_middle_arg,
     "@use \"sass:math\";\na {\n  color: min(1px, math.acos(2), 0);\n}\n",
-    "Error: 1px and NaNdeg are incompatible."
+    "Error: 1px and calc(NaN * 1deg) are incompatible."
 );
 error!(
     unitful_nan_max_first_arg,
     "@use \"sass:math\";\na {\n  color: max(math.acos(2), 1px);\n}\n",
-    "Error: NaNdeg and 1px are incompatible."
+    "Error: calc(NaN * 1deg) and 1px are incompatible."
 );
 error!(
     unitful_nan_max_last_arg,
     "@use \"sass:math\";\na {\n  color: max(1px, math.acos(2));\n}\n",
-    "Error: 1px and NaNdeg are incompatible."
+    "Error: 1px and calc(NaN * 1deg) are incompatible."
 );
 error!(
     unitful_nan_max_middle_arg,
     "@use \"sass:math\";\na {\n  color: max(1px, math.acos(2), 0);\n}\n",
-    "Error: 1px and NaNdeg are incompatible."
+    "Error: 1px and calc(NaN * 1deg) are incompatible."
 );
 error!(
     unitful_nan_nth_n,
     "@use \"sass:math\";\na {\n  color: nth([a], math.acos(2));\n}\n",
-    "Error: $n: NaNdeg is not an int."
+    "Error: $n: calc(NaN * 1deg) is not an int."
 );
 error!(
     unitful_nan_set_nth_n,
     "@use \"sass:math\";\na {\n  color: set-nth([a], math.acos(2), b);\n}\n",
-    "Error: $n: NaNdeg is not an int."
+    "Error: $n: calc(NaN * 1deg) is not an int."
 );
 test!(
     nan_unary_negative,
     "a {\n  color: -(0/0);\n}\n",
-    "a {\n  color: NaN;\n}\n"
+    "a {\n  color: calc(NaN);\n}\n"
 );
 test!(
     nan_unary_plus,
     "a {\n  color: +(0/0);\n}\n",
-    "a {\n  color: NaN;\n}\n"
+    "a {\n  color: calc(NaN);\n}\n"
 );
 test!(
     nan_unary_div,
     "a {\n  color: /(0/0);\n}\n",
-    "a {\n  color: /NaN;\n}\n"
+    "a {\n  color: /calc(NaN);\n}\n"
 );

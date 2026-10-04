@@ -6,7 +6,7 @@ use crate::{
     color::Color,
     common::{BinaryOp, Brackets, Identifier, ListSeparator, QuoteKind, UnaryOp},
     unit::Unit,
-    value::{CalculationName, Number},
+    value::Number,
 };
 
 use super::{ArgumentInvocation, AstSupportsCondition, Interpolation, InterpolationPart};
@@ -46,6 +46,9 @@ pub struct BinaryOpExpr {
     pub op: BinaryOp,
     pub rhs: AstExpr,
     pub allows_slash: bool,
+    /// Whether whitespace (or a comment) is on both sides of the operator, which calculations
+    /// require around `+` and `-` (dart-sass checks the text between the operands' spans).
+    pub whitespace_around_operator: bool,
     pub span: Span,
 }
 
@@ -54,10 +57,6 @@ pub enum AstExpr {
     BinaryOp(Arc<BinaryOpExpr>),
     True,
     False,
-    Calculation {
-        name: CalculationName,
-        args: Vec<Self>,
-    },
     Color(Arc<Color>),
     FunctionCall(FunctionCallExpr),
     If(Arc<Ternary>),
@@ -169,7 +168,7 @@ impl AstExpr {
 
     pub fn is_slash_operand(&self) -> bool {
         match self {
-            Self::Number { .. } | Self::Calculation { .. } => true,
+            Self::Number { .. } | Self::FunctionCall(..) => true,
             Self::BinaryOp(binop) => binop.allows_slash,
             _ => false,
         }
@@ -181,11 +180,51 @@ impl AstExpr {
             op: BinaryOp::Div,
             rhs: right,
             allows_slash: true,
+            whitespace_around_operator: true,
             span,
         }))
     }
 
     pub const fn span(self, span: Span) -> Spanned<Self> {
         Spanned { node: self, span }
+    }
+}
+
+impl AstExpr {
+    /// Whether this expression is valid in a calculation (dart-sass's
+    /// `IsCalculationSafeVisitor`).
+    pub fn is_calculation_safe(&self) -> bool {
+        match self {
+            Self::BinaryOp(binop) => {
+                matches!(
+                    binop.op,
+                    BinaryOp::Mul | BinaryOp::Div | BinaryOp::Plus | BinaryOp::Minus
+                ) && binop.lhs.is_calculation_safe()
+                    && binop.rhs.is_calculation_safe()
+            }
+            Self::True | Self::False | Self::Color(..) | Self::Map(..) | Self::Null => false,
+            Self::FunctionCall(..) | Self::If(..) | Self::InterpolatedFunction(..) => true,
+            Self::List(list) => {
+                list.separator == ListSeparator::Space
+                    && list.brackets == Brackets::None
+                    && list.elems.len() > 1
+                    && list.elems.iter().all(|e| e.node.is_calculation_safe())
+            }
+            Self::Number { .. } | Self::Variable { .. } => true,
+            Self::Paren(inner) => inner.is_calculation_safe(),
+            Self::ParentSelector | Self::Supports(..) | Self::UnaryOp(..) => false,
+            Self::String(StringExpr(text, quotes), ..) => {
+                if *quotes != QuoteKind::None {
+                    return false;
+                }
+                // Exclude non-identifier constructs that are parsed as strings.
+                let text = text.initial_plain();
+                // `!important`, ID-style identifiers, unicode ranges, `url()`.
+                !text.starts_with('!')
+                    && !text.starts_with('#')
+                    && text.chars().nth(1) != Some('+')
+                    && text.chars().nth(3) != Some('(')
+            }
+        }
     }
 }
