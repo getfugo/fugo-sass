@@ -7,10 +7,9 @@ on:
   workflow_dispatch:
 
 env:
-  # The toolchain CI builds, tests and lints with: the latest stable Rust.
+  # The toolchain CI builds, tests and lints with: the latest stable Rust, also the minimum the
+  # crates support (`rust-version` in Cargo.toml's `[workspace.package]`).
   RUST_TOOLCHAIN: "1.99.0"
-  # The minimum supported Rust version, `rust-version` in the crates' Cargo.toml (fugo's).
-  RUST_MSRV: "1.96.0"
 
 jobs:
   tests:
@@ -70,8 +69,8 @@ jobs:
 
       - run: cargo clippy --workspace --all-targets --features=macro,wasm-exports -- -D warnings
 
-  # Every crate builds on its own with the minimum supported Rust version.
-  msrv:
+  # Every crate builds on its own, with and without its features.
+  crates:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -79,7 +78,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.RUST_MSRV }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - run: |
           cargo check --workspace --all-targets --features=macro,wasm-exports

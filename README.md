@@ -119,9 +119,9 @@ most of the 5,735 failures are the color functions, mostly for the CSS Color 4 c
 
 ## Versioning
 
-The crates use the 2024 edition. The minimum supported Rust version (MSRV) is `1.96.0`, that of
-[fugo](https://github.com/getfugo/fugo), and CI builds every crate with it; CI tests and lints with
-the latest stable Rust. An increase to the MSRV will correspond with a minor version bump.
+The crates use the 2024 edition. The minimum supported Rust version (MSRV) is `1.99.0`, the latest
+stable Rust, which CI tests and lints with. An increase to the MSRV will correspond with a minor
+version bump.
 
 An increase to the targeted `dart-sass` version will correspond to either a minor or bugfix
 version bump, depending on the changes.

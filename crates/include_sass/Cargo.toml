@@ -1,24 +1,25 @@
 [package]
 name = "fugo-sass-macro"
-version = "0.14.0"
-edition = "2024"
 description = "The proc macro behind fugo_sass::include!"
 readme = "../../README.md"
-license = "MIT"
 categories = ["web-programming"]
-keywords = ["scss", "sass", "css", "web"]
-repository = "https://github.com/getfugo/fugo-sass"
-authors = ["Connor Skees <39542938+ConnorSkees@users.noreply.github.com>", "The fugo-sass authors"]
 include = ["src", "Cargo.toml", "LICENSE"]
-rust-version = "1.96"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords.workspace = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
-syn = { version = "3", default-features = false, features = ["parsing", "printing", "proc-macro"] }
-fugo-sass-compiler = { path = "../compiler", version = "=0.14.0" }
-quote = { version = "1.0.47", default-features = false }
+syn = { workspace = true, features = ["parsing", "printing", "proc-macro"] }
+# The compiler's default features.
+fugo-sass-compiler = { workspace = true, features = ["random", "custom-builtin-fns"] }
+quote.workspace = true
 
 [features]
 nightly = []
