@@ -1323,7 +1323,7 @@ impl<'a> Visitor<'a> {
                 },
                 &self.media_queries,
                 extend_rule.span,
-            );
+            )?;
         }
 
         Ok(None)

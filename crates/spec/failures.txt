@@ -5645,9 +5645,6 @@ core_functions/selector/is_superselector/simple/universal/namespace/universal/an
 core_functions/selector/nest/error/wrong_name
 core_functions/selector/nest/parent/alone/first
 core_functions/selector/parse/error/wrong_name
-core_functions/selector/replace/error/extendee/parent
-core_functions/selector/replace/error/extender/parent
-core_functions/selector/replace/error/selector/parent
 core_functions/selector/replace/error/wrong_name
 core_functions/selector/unify/complex/combinators/child/and_child/distinct
 core_functions/selector/unify/complex/combinators/child/and_child/overlap
@@ -5827,8 +5824,6 @@ css/plain/function/uppercase/result/characters
 css/plain/function/uppercase/result/sass_script
 css/plain/if
 css/plain/import/partial_conflict
-css/plain/import/whitespace/error/after_identifier/sass
-css/plain/import/whitespace/error/media/before/sass
 css/plain/import/whitespace/supports/calc/sass
 css/plain/import/whitespace/supports/condition_and/after_and/sass
 css/plain/import/whitespace/supports/condition_and/before_and/sass
@@ -5978,7 +5973,6 @@ directives/extend/error/cross_media/after/both_in_media
 directives/extend/error/cross_media/after/extend_in_media
 directives/extend/error/cross_media/before/both_in_media
 directives/extend/error/cross_media/before/extend_in_media
-directives/extend/error/cross_media/merged
 directives/extend/pseudo/into_pseudo/extends_after
 directives/extend/whitespace/after_arg/sass
 directives/extend/whitespace/before_arg/sass
@@ -6083,8 +6077,6 @@ directives/import/implicit_dependencies/forwarded_first/use_in_second
 directives/import/nested/top_level_declaration/include/with_use
 directives/import/nested/top_level_declaration/include/with_use_two_levels_deep
 directives/import/top_level_parent/top_level_parent
-directives/import/whitespace/error/before_comma/sass
-directives/import/whitespace/error/modifier/args/before/sass
 directives/import/whitespace/modifier/args/after_open_paren/sass
 directives/import/whitespace/modifier/args/before_close_paren/sass
 directives/mixin/comment/content/after_args/loud
@@ -6446,7 +6438,6 @@ non_conformant/extend-tests/176_test_combinator_unification_nested
 non_conformant/extend-tests/177_test_combinator_unification_nested
 non_conformant/extend-tests/178_test_combinator_unification_with_newlines
 non_conformant/extend-tests/238_unify_root_pseudoelement
-non_conformant/extend-tests/extend-extender
 non_conformant/extend-tests/extend-loop
 non_conformant/misc/mixin_content
 non_conformant/misc/negative_numbers
