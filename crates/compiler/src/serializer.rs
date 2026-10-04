@@ -20,6 +20,20 @@ use crate::{
     Options,
 };
 
+/// The indentation of the least-indented non-empty line of `text` after the first: `None` if
+/// `text` has no newline, and `Some(None)` if it has newlines but no such line.
+fn minimum_indentation(text: &str) -> Option<Option<usize>> {
+    let (_, rest) = text.split_once('\n')?;
+    Some(
+        rest.split('\n')
+            .filter_map(|line| {
+                let indentation = line.len() - line.trim_start_matches([' ', '\t']).len();
+                (indentation < line.len()).then_some(indentation)
+            })
+            .min(),
+    )
+}
+
 pub(crate) fn serialize_selector_list(
     list: &SelectorList,
     options: &Options,
@@ -1149,14 +1163,94 @@ impl<'a> Serializer<'a> {
             .extend_from_slice(style.property.resolve_ref().as_bytes());
         self.buffer.push(b':');
 
-        // todo: _writeFoldedValue and _writeReindentedValue
-        if !style.declared_as_custom_property && !self.options.is_compressed() {
+        if style.declared_as_custom_property {
+            if let Value::String(text, QuoteKind::None) = &style.value.node {
+                if self.options.is_compressed() {
+                    self.write_folded_value(text);
+                } else {
+                    let column = self.map.look_up_pos(style.name_span.low()).position.column;
+                    self.write_reindented_value(text, column);
+                }
+                return Ok(());
+            }
+        } else if !self.options.is_compressed() {
             self.buffer.push(b' ');
         }
 
         self.visit_value(&style.value.node, style.value.span)?;
 
         Ok(())
+    }
+
+    /// Writes a custom property's value with each newline, and the whitespace after it, as a space.
+    fn write_folded_value(&mut self, text: &str) {
+        let mut chars = text.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c != '\n' {
+                self.buffer
+                    .extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes());
+                continue;
+            }
+            self.buffer.push(b' ');
+            while chars.peek().map_or(false, |c| c.is_ascii_whitespace()) {
+                chars.next();
+            }
+        }
+    }
+
+    /// Writes a custom property's value reindented relative to the current indentation, where the
+    /// property's name is at `name_column` in the source.
+    fn write_reindented_value(&mut self, text: &str, name_column: usize) {
+        match minimum_indentation(text) {
+            None => self.buffer.extend_from_slice(text.as_bytes()),
+            Some(None) => {
+                self.buffer.extend_from_slice(text.trim_end().as_bytes());
+                self.buffer.push(b' ');
+            }
+            Some(Some(minimum)) => self.write_with_indent(text, minimum.min(name_column)),
+        }
+    }
+
+    /// Writes `text`, replacing `minimum_indentation` with the current indentation on each
+    /// non-empty line after the first, and trailing empty lines with a space.
+    fn write_with_indent(&mut self, text: &str, minimum_indentation: usize) {
+        let (first, mut rest) = text.split_once('\n').unwrap_or((text, ""));
+        self.buffer.extend_from_slice(first.as_bytes());
+
+        loop {
+            // The blank lines before the next one with text.
+            let mut newlines = 1;
+            let line = loop {
+                let trimmed = rest.trim_start_matches([' ', '\t']);
+                match trimmed.split_once('\n') {
+                    _ if trimmed.is_empty() => {
+                        // The whitespace could matter to a custom property.
+                        self.buffer.push(b' ');
+                        return;
+                    }
+                    Some(("", after)) => {
+                        newlines += 1;
+                        rest = after;
+                    }
+                    _ => break rest,
+                }
+            };
+
+            for _ in 0..newlines {
+                self.buffer.push(b'\n');
+            }
+            self.write_indentation();
+            let (line, after) = match line.split_once('\n') {
+                Some((line, after)) => (line, Some(after)),
+                None => (line, None),
+            };
+            self.buffer
+                .extend_from_slice(line.get(minimum_indentation..).unwrap_or("").as_bytes());
+            match after {
+                Some(after) => rest = after,
+                None => return,
+            }
+        }
     }
 
     fn write_import(&mut self, import: &str, modifiers: Option<String>) -> SassResult<()> {

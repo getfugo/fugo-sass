@@ -107,3 +107,14 @@ test!(
     r##"a {--a: 'b' "c\"d" "#{1 + 1}";}"##,
     "a {\n  --a: 'b' \"c\\\"d\" \"2\";\n}\n"
 );
+test!(
+    multiline_value_is_reindented,
+    "a {\n  --b: (c\n    d);\n  e {\n      --f: {\n          g: h;\n        };\n  }\n}\n",
+    "a {\n  --b: (c\n    d);\n}\na e {\n  --f: {\n      g: h;\n    };\n}\n"
+);
+test!(
+    multiline_value_is_folded_when_compressed,
+    "a {\n  --b: (c\n    d);\n}\n",
+    "a{--b: (c d)}",
+    fugo_sass::Options::default().style(fugo_sass::OutputStyle::Compressed)
+);
