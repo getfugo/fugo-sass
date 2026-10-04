@@ -42,6 +42,21 @@ jobs:
 
       - run: cargo fmt --all -- --check
 
+  # No file of code may be longer than 500 lines (AGENTS.md).
+  file-length:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - run: |
+          long=$(git ls-files '*.rs' '*.sh' | xargs wc -l | awk '$2 != "total" && $1 > 500')
+          if [ -n "$long" ]; then
+            echo "Files longer than 500 lines (see AGENTS.md):"
+            echo "$long"
+            exit 1
+          fi
+
   clippy:
     runs-on: ubuntu-latest
     steps:

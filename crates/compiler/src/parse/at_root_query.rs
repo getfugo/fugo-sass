@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{ast::AtRootQuery, error::SassResult, lexer::Lexer};
 
-use super::BaseParser;
+use super::{BaseParser, IdentifierParser};
 
 pub(crate) struct AtRootQueryParser {
     toks: Lexer,

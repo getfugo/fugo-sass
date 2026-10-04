@@ -1,0 +1,449 @@
+use super::*;
+
+test!(
+    preserves_named_color_case,
+    "a {\n  color: OrAnGe;\n}\n",
+    "a {\n  color: OrAnGe;\n}\n"
+);
+test!(
+    named_color_casing_is_color,
+    "a {\n  color: hue(RED);\n}\n",
+    "a {\n  color: 0deg;\n}\n"
+);
+test!(
+    preserves_hex_color_case,
+    "a {\n  color: #FfFfFf;\n}\n",
+    "a {\n  color: #FfFfFf;\n}\n"
+);
+test!(
+    preserves_hex_8_val_10000000,
+    "a {\n  color: #10000000;\n}\n",
+    "a {\n  color: #10000000;\n}\n"
+);
+test!(
+    preserves_hex_8_val_12312312,
+    "a {\n  color: #12312312;\n}\n",
+    "a {\n  color: #12312312;\n}\n"
+);
+test!(
+    preserves_hex_8_val_ab234cff,
+    "a {\n  color: #ab234cff;\n}\n",
+    "a {\n  color: #ab234cff;\n}\n"
+);
+test!(
+    preserves_hex_6_val_000000,
+    "a {\n  color: #000000;\n}\n",
+    "a {\n  color: #000000;\n}\n"
+);
+test!(
+    preserves_hex_6_val_123123,
+    "a {\n  color: #123123;\n}\n",
+    "a {\n  color: #123123;\n}\n"
+);
+test!(
+    preserves_hex_6_val_ab234c,
+    "a {\n  color: #ab234c;\n}\n",
+    "a {\n  color: #ab234c;\n}\n"
+);
+test!(
+    preserves_hex_4_val_0000,
+    "a {\n  color: #0000;\n}\n",
+    "a {\n  color: #0000;\n}\n"
+);
+test!(
+    preserves_hex_4_val_123a,
+    "a {\n  color: #123a;\n}\n",
+    "a {\n  color: #123a;\n}\n"
+);
+test!(
+    preserves_hex_4_val_ab2f,
+    "a {\n  color: #ab2f;\n}\n",
+    "a {\n  color: #ab2f;\n}\n"
+);
+test!(
+    preserves_hex_3_val_000,
+    "a {\n  color: #000;\n}\n",
+    "a {\n  color: #000;\n}\n"
+);
+test!(
+    preserves_hex_3_val_123,
+    "a {\n  color: #123;\n}\n",
+    "a {\n  color: #123;\n}\n"
+);
+test!(
+    preserves_hex_3_val_ab2,
+    "a {\n  color: #ab2;\n}\n",
+    "a {\n  color: #ab2;\n}\n"
+);
+test!(
+    converts_rgb_to_named_color,
+    "a {\n  color: rgb(0, 0, 0);\n}\n",
+    "a {\n  color: rgb(0, 0, 0);\n}\n"
+);
+test!(
+    converts_rgba_to_named_color_red,
+    "a {\n  color: rgb(255, 0, 0, 255);\n}\n",
+    "a {\n  color: rgb(255, 0, 0);\n}\n"
+);
+test!(
+    rgb_negative,
+    "a {\n  color: rgb(-1, 1, 1);\n}\n",
+    "a {\n  color: rgb(0, 1, 1);\n}\n"
+);
+test!(
+    rgb_binop,
+    "a {\n  color: rgb(1, 2, 1+2);\n}\n",
+    "a {\n  color: rgb(1, 2, 3);\n}\n"
+);
+test!(
+    rgb_pads_0,
+    "a {\n  color: rgb(1, 2, 3);\n}\n",
+    "a {\n  color: rgb(1, 2, 3);\n}\n"
+);
+test!(
+    rgba_percent,
+    "a {\n  color: rgba(159%, 169, 169%, 50%);\n}\n",
+    "a {\n  color: rgba(255, 169, 255, 0.5);\n}\n"
+);
+test!(
+    rgba_percent_round_up,
+    "a {\n  color: rgba(59%, 169, 69%, 50%);\n}\n",
+    "a {\n  color: rgba(150, 169, 176, 0.5);\n}\n"
+);
+test!(
+    rgb_double_digits,
+    "a {\n  color: rgb(254, 255, 255);\n}\n",
+    "a {\n  color: rgb(254, 255, 255);\n}\n"
+);
+test!(
+    rgb_double_digits_white,
+    "a {\n  color: rgb(255, 255, 255);\n}\n",
+    "a {\n  color: rgb(255, 255, 255);\n}\n"
+);
+test!(
+    alpha_function_4_hex,
+    "a {\n  color: alpha(#0123);\n}\n",
+    "a {\n  color: 0.2;\n}\n"
+);
+test!(
+    alpha_function_named_color,
+    "a {\n  color: alpha(red);\n}\n",
+    "a {\n  color: 1;\n}\n"
+);
+test!(
+    opacity_function_number,
+    "a {\n  color: opacity(1);\n}\n",
+    "a {\n  color: opacity(1);\n}\n"
+);
+test!(
+    opacity_function_number_unit,
+    "a {\n  color: opacity(1px);\n}\n",
+    "a {\n  color: opacity(1px);\n}\n"
+);
+test!(
+    rgba_one_arg,
+    "a {\n  color: rgba(1 2 3);\n}\n",
+    "a {\n  color: rgb(1, 2, 3);\n}\n"
+);
+test!(
+    rgb_two_args,
+    "a {\n  color: rgb(#123, 0);\n}\n",
+    "a {\n  color: rgba(17, 34, 51, 0);\n}\n"
+);
+test!(
+    rgba_two_args,
+    "a {\n  color: rgba(red, 0.5);\n}\n",
+    "a {\n  color: rgba(255, 0, 0, 0.5);\n}\n"
+);
+test!(
+    rgba_opacity_over_1,
+    "a {\n  color: rgba(1, 2, 3, 3);\n}\n",
+    "a {\n  color: rgb(1, 2, 3);\n}\n"
+);
+test!(
+    rgba_negative_alpha,
+    "a {\n  color: rgba(1, 2, 3, -10%);\n}\n",
+    "a {\n  color: rgba(1, 2, 3, 0);\n}\n"
+);
+test!(
+    rgba_opacity_decimal,
+    "a {\n  color: rgba(1, 2, 3, .6);\n}\n",
+    "a {\n  color: rgba(1, 2, 3, 0.6);\n}\n"
+);
+test!(
+    rgba_opacity_percent,
+    "a {\n  color: rgba(1, 2, 3, 50%);\n}\n",
+    "a {\n  color: rgba(1, 2, 3, 0.5);\n}\n"
+);
+test!(
+    rgba_3_args,
+    "a {\n  color: rgba(7.1%, 20.4%, 33.9%);\n}\n",
+    "a {\n  color: rgb(18, 52, 86);\n}\n"
+);
+error!(
+    rgb_no_args,
+    "a {\n  color: rgb();\n}\n", "Error: Missing argument $channels."
+);
+error!(
+    rgba_no_args,
+    "a {\n  color: rgba();\n}\n", "Error: Missing argument $channels."
+);
+test!(
+    invert_no_weight,
+    "a {\n  color: invert(white);\n}\n",
+    "a {\n  color: black;\n}\n"
+);
+test!(
+    plain_invert_no_unit,
+    "a {\n  color: invert(1);\n}\n",
+    "a {\n  color: invert(1);\n}\n"
+);
+test!(
+    plain_invert_unit_percent,
+    "a {\n  color: invert(10%);\n}\n",
+    "a {\n  color: invert(10%);\n}\n"
+);
+test!(
+    plain_invert_unit_deg,
+    "a {\n  color: invert(1deg);\n}\n",
+    "a {\n  color: invert(1deg);\n}\n"
+);
+test!(
+    plain_invert_negative,
+    "a {\n  color: invert(-1);\n}\n",
+    "a {\n  color: invert(-1);\n}\n"
+);
+test!(
+    plain_invert_float,
+    "a {\n  color: invert(1.5);\n}\n",
+    "a {\n  color: invert(1.5);\n}\n"
+);
+test!(
+    plain_invert_arithmetic,
+    "a {\n  color: invert(1 + 1);\n}\n",
+    "a {\n  color: invert(2);\n}\n"
+);
+test!(
+    plain_invert_nan,
+    "a {\n  color: invert((0 / 0));\n}\n",
+    "a {\n  color: invert(NaN);\n}\n"
+);
+error!(
+    plain_invert_two_args,
+    "a {\n  color: invert(1, 50%);\n}\n",
+    "Error: Only one argument may be passed to the plain-CSS invert() function."
+);
+test!(
+    invert_weight_percent,
+    "a {\n  color: invert(white, 20%);\n}\n",
+    "a {\n  color: #cccccc;\n}\n"
+);
+test!(
+    invert_weight_percent_turquoise,
+    "a {\n  color: invert(turquoise, 23%);\n}\n",
+    "a {\n  color: #5db4ab;\n}\n"
+);
+test!(
+    invert_weight_no_unit,
+    "a {\n  color: invert(white, 20);\n}\n",
+    "a {\n  color: #cccccc;\n}\n"
+);
+
+test!(
+    transparentize,
+    "a {\n  color: transparentize(rgba(0, 0, 0, 0.5), 0.1);\n}\n",
+    "a {\n  color: rgba(0, 0, 0, 0.4);\n}\n"
+);
+test!(
+    fade_out,
+    "a {\n  color: fade-out(rgba(0, 0, 0, 0.8), 0.2);\n}\n",
+    "a {\n  color: rgba(0, 0, 0, 0.6);\n}\n"
+);
+test!(
+    opacify,
+    "a {\n  color: opacify(rgba(0, 0, 0, 0.5), 0.1);\n}\n",
+    "a {\n  color: rgba(0, 0, 0, 0.6);\n}\n"
+);
+test!(
+    fade_in,
+    "a {\n  color: opacify(rgba(0, 0, 17, 0.8), 0.2);\n}\n",
+    "a {\n  color: #000011;\n}\n"
+);
+test!(
+    grayscale_1,
+    "a {\n  color: grayscale(plum);\n}\n",
+    "a {\n  color: #bfbfbf;\n}\n"
+);
+test!(
+    grayscale_2,
+    "a {\n  color: grayscale(red);\n}\n",
+    "a {\n  color: gray;\n}\n"
+);
+test!(
+    grayscale_number,
+    "a {\n  color: grayscale(15%);\n}\n",
+    "a {\n  color: grayscale(15%);\n}\n"
+);
+test!(
+    complement,
+    "a {\n  color: complement(red);\n}\n",
+    "a {\n  color: aqua;\n}\n"
+);
+test!(
+    complement_hue_under_180,
+    "a {\n  color: complement(#abcdef);\n}\n",
+    "a {\n  color: #efcdab;\n}\n"
+);
+test!(
+    mix_no_weight,
+    "a {\n  color: mix(#f00, #00f);\n}\n",
+    "a {\n  color: purple;\n}\n"
+);
+test!(
+    mix_weight_25,
+    "a {\n  color: mix(#f00, #00f, 25%);\n}\n",
+    "a {\n  color: #4000bf;\n}\n"
+);
+test!(
+    mix_opacity,
+    "a {\n  color: mix(rgba(255, 0, 0, 0.5), #00f);\n}\n",
+    "a {\n  color: rgba(64, 0, 191, 0.75);\n}\n"
+);
+test!(
+    mix_sanity_check,
+    "a {\n  color: mix(black, white);\n}\n",
+    "a {\n  color: gray;\n}\n"
+);
+test!(
+    change_color_blue,
+    "a {\n  color: change-color(#102030, $blue: 5);\n}\n",
+    "a {\n  color: #102005;\n}\n"
+);
+test!(
+    change_color_red_blue,
+    "a {\n  color: change-color(#102030, $red: 120, $blue: 5);\n}\n",
+    "a {\n  color: #782005;\n}\n"
+);
+test!(
+    change_color_lum_alpha,
+    "a {\n  color: change-color(hsl(25, 100%, 80%), $lightness: 40%, $alpha: 0.8);\n}\n",
+    "a {\n  color: rgba(204, 85, 0, 0.8);\n}\n"
+);
+test!(
+    adjust_color_blue,
+    "a {\n  color: adjust-color(#102030, $blue: 5);\n}\n",
+    "a {\n  color: #102035;\n}\n"
+);
+test!(
+    adjust_color_negative,
+    "a {\n  color: adjust-color(#102030, $red: -5, $blue: 5);\n}\n",
+    "a {\n  color: #0b2035;\n}\n"
+);
+test!(
+    adjust_color_lum_alpha,
+    "a {\n  color: adjust-color(hsl(25, 100%, 80%), $lightness: -30%, $alpha: -0.4);\n}\n",
+    "a {\n  color: rgba(255, 106, 0, 0.6);\n}\n"
+);
+test!(
+    scale_color_lightness,
+    "a {\n  color: scale-color(hsl(120, 70%, 80%), $lightness: 50%);\n}\n",
+    "a {\n  color: #d4f7d4;\n}\n"
+);
+test!(
+    scale_color_neg_lightness_and_pos_saturation,
+    "a {\n  color: scale-color(turquoise, $saturation: 24%, $lightness: -48%);\n}\n",
+    "a {\n  color: #10867a;\n}\n"
+);
+error!(
+    scale_color_named_arg_hue,
+    "a {\n  color: scale-color(red, $hue: 10%);\n}\n", "Error: No argument named $hue."
+);
+test!(
+    scale_color_negative,
+    "a {\n  color: scale-color(rgb(200, 150%, 170%), $green: -40%, $blue: 70%);\n}\n",
+    "a {\n  color: #c899ff;\n}\n"
+);
+test!(
+    change_color_named_arg_hue,
+    "a {\n  color: change-color(blue, $hue: 150);\n}\n",
+    "a {\n  color: #00ff80;\n}\n"
+);
+test!(
+    adjust_color_named_arg_hue,
+    "a {\n  color: adjust-color(blue, $hue: 150);\n}\n",
+    "a {\n  color: #ff8000;\n}\n"
+);
+test!(
+    change_color_negative_hue,
+    "a {\n  color: change-color(red, $hue: -60);\n}\n",
+    "a {\n  color: fuchsia;\n}\n"
+);
+test!(
+    scale_color_alpha,
+    "a {\n  color: scale-color(hsl(200, 70%, 80%), $saturation: -90%, $alpha: -30%);\n}\n",
+    "a {\n  color: rgba(200, 205, 208, 0.7);\n}\n"
+);
+test!(
+    scale_color_alpha_over_1,
+    "a {\n  color: scale-color(sienna, $alpha: -70%);\n}\n",
+    "a {\n  color: rgba(160, 82, 45, 0.3);\n}\n"
+);
+test!(
+    ie_hex_str_hex_3,
+    "a {\n  color: ie-hex-str(#abc);\n}\n",
+    "a {\n  color: #FFAABBCC;\n}\n"
+);
+test!(
+    ie_hex_str_hex_6,
+    "a {\n  color: ie-hex-str(#3322BB);\n}\n",
+    "a {\n  color: #FF3322BB;\n}\n"
+);
+test!(
+    ie_hex_str_rgb,
+    "a {\n  color: ie-hex-str(rgba(0, 255, 0, 0.5));\n}\n",
+    "a {\n  color: #8000FF00;\n}\n"
+);
+test!(
+    rgba_1_arg,
+    "a {\n  color: rgba(74.7% 173 93%);\n}\n",
+    "a {\n  color: rgb(190, 173, 237);\n}\n"
+);
+test!(
+    hsla_1_arg,
+    "a {\n  color: hsla(60 60% 50%);\n}\n",
+    "a {\n  color: hsl(60deg, 60%, 50%);\n}\n"
+);
+test!(
+    hsla_1_arg_weird_units,
+    "a {\n  color: hsla(60foo 60foo 50foo);\n}\n",
+    "a {\n  color: hsl(60deg, 60%, 50%);\n}\n"
+);
+test!(
+    sass_spec__spec_colors_basic,
+    r#"p {
+  color: rgb(255, 128, 0);
+  color: red green blue;
+  color: (red) (green) (blue);
+  color: red + hux;
+  color: unquote("red") + green;
+  foo: rgb(200, 150%, 170%);
+}
+"#,
+    "p {\n  color: rgb(255, 128, 0);\n  color: red green blue;\n  color: red green blue;\n  color: redhux;\n  color: redgreen;\n  foo: rgb(200, 255, 255);\n}\n"
+);
+test!(
+    sass_spec__spec_colors_change_color,
+    "p {
+  color: change-color(#102030, $blue: 5);
+  color: change-color(#102030, $alpha: .325);
+  color: change-color(#102030, $red: 120, $blue: 5);
+  color: change-color(hsl(25, 100%, 80%), $lightness: 40%, $alpha: 0.8);
+}
+",
+    "p {\n  color: #102005;\n  color: rgba(16, 32, 48, 0.325);\n  color: #782005;\n  color: rgba(204, 85, 0, 0.8);\n}\n"
+);
+test!(
+    transparent_from_function,
+    "a {\n  color: rgb(transparent, 0);\n}\n",
+    "a {\n  color: rgba(0, 0, 0, 0);\n}\n"
+);
