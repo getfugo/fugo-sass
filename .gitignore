@@ -26,6 +26,9 @@ dhat*
 susy
 bulma*
 bootstrap*
+# but not the Bootstrap differences of crates/spec
+!/crates/spec/bootstrap/
+!/crates/spec/bootstrap.sh
 materialize
 uikit
 bourbon

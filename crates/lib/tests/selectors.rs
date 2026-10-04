@@ -412,7 +412,7 @@ test!(
 test!(
     nested_multiple_newline,
     "a,\nb {\n  c {\n    color: blue;\n  }\n  color: red;\n}\n",
-    "a,\nb {\n  color: red;\n}\na c,\nb c {\n  color: blue;\n}\n"
+    "a c,\nb c {\n  color: blue;\n}\na,\nb {\n  color: red;\n}\n"
 );
 test!(
     trailing_comma_newline,
