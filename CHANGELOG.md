@@ -65,6 +65,9 @@
 - selectors, `@extend` and the preludes of unknown at-rules keep quoted strings as written
   (`::before('a')`), and an unmatched `)` or `]` in them is an error (`Unexpected ")".`), as in
   `dart-sass` 1.105.1
+- custom properties that span lines keep their lines, reindented to the output (`--a: (b\n    c)`),
+  and are folded onto one line in compressed output, as `dart-sass` writes them; they were always
+  folded
 
 # 0.14.0
 

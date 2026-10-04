@@ -5529,12 +5529,6 @@ css/comment/sourcemap/sourcemappingurl
 css/comment/sourcemap/sourceurl
 css/comment/weird_indentation
 css/custom_properties/empty/literal
-css/custom_properties/indentation
-css/custom_properties/simple
-css/custom_properties/syntax/sass/multiline_list/brace
-css/custom_properties/syntax/sass/multiline_list/bracket
-css/custom_properties/syntax/sass/multiline_list/paren
-css/custom_properties/without_semicolon
 css/font-face/bubble/empty
 css/function/error/uppercase/result/nested
 css/function/interpolated/result/nested
