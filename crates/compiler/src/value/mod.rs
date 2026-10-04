@@ -5,7 +5,7 @@ use codemap::{Span, Spanned};
 use crate::{
     color::Color,
     common::{BinaryOp, Brackets, ListSeparator, QuoteKind},
-    error::SassResult,
+    error::{SassError, SassResult},
     evaluate::Visitor,
     selector::Selector,
     serializer::{inspect_value, serialize_value},
@@ -455,24 +455,28 @@ impl Value {
     /// selector, or if parsing fails. If `allow_parent` is `true`, this allows
     /// parent selectors. Otherwise, they're considered parse errors.
     ///
-    /// `name` is the argument name. It's used for error reporting.
+    /// `name` is the argument name, which prefixes the errors (`$name: …`) as dart-sass's
+    /// `assertSelector(name: …)` does; `selector.nest()` and `selector.append()` pass none.
     pub fn to_selector(
         self,
         visitor: &mut Visitor,
-        name: &str,
+        name: Option<&str>,
         allows_parent: bool,
         span: Span,
     ) -> SassResult<Selector> {
+        let named = |e: Box<SassError>| match name {
+            Some(name) => e.with_argument_name(name),
+            None => e,
+        };
         let string = match self.clone().selector_string()? {
             Some(v) => v,
-            None => return Err((format!("${}: {} is not a valid selector: it must be a string,\n a list of strings, or a list of lists of strings.", name, self.inspect(span)?), span).into()),
+            None => return Err(named((format!("{} is not a valid selector: it must be a string,\n a list of strings, or a list of lists of strings.", self.inspect(span)?), span).into())),
         };
-        Ok(Selector(visitor.parse_selector_from_string(
-            &string,
-            allows_parent,
-            true,
-            span,
-        )?))
+        Ok(Selector(
+            visitor
+                .parse_selector_from_string(&string, allows_parent, true, span)
+                .map_err(named)?,
+        ))
     }
 
     fn selector_string(self) -> SassResult<Option<String>> {
