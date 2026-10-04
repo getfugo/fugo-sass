@@ -14,6 +14,8 @@
   names, which earlier compilations on the same thread could change. In `fugo-sass-compiler`, the
   maps and sets of names in `sass_value` and `sass_ast` are `IndexMap`s and `IndexSet`s
   (`ArgList::keywords()`, `ArgumentResult::named`, `AstForwardRule`'s shown and hidden members)
+- the official test suite runs with `cargo spec` (`crates/spec`), against `sass-spec` pinned to the
+  specs of `dart-sass` 1.105.1; CI checks the failing specs against `crates/spec/failures.txt`
 
 # 0.14.0
 

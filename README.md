@@ -101,17 +101,20 @@ does include some spec tests verbatim. This has the benefit of allowing tests
 to be run without ruby as well as allowing the tests more granular than they
 are in the official spec.
 
-Having said that, to run the official test suite,
+Having said that, the official test suite runs with `cargo spec`, which needs only Rust
+([crates/spec](crates/spec/README.md)):
 
 ```bash
-# This script expects node >=v14.14.0. Check version with `node --version`
 git clone https://github.com/getfugo/fugo-sass --recursive
-cd fugo-sass && cargo b --release
-cd sass-spec && npm install
-npm run sass-spec -- --impl=dart-sass --command '../target/release/fugo-sass'
+cd fugo-sass && cargo spec
 ```
 
-The spec runner does not work on Windows.
+The `sass-spec` submodule is pinned to the specs of `dart-sass` 1.105.1, the release fugo-sass
+works towards. There fugo-sass passes 7,342 of the 14,347 specs that apply to `dart-sass` (51%):
+most failures are features `dart-sass` added after 1.54.3: the color functions, mostly for the CSS
+Color 4 color spaces (5,223 failing specs), the new calculations (434) and CSS-style `if()`
+(164). CI checks that the failing specs are exactly those of
+[`crates/spec/failures.txt`](crates/spec/failures.txt).
 
 ## Versioning
 

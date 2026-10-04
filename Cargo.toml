@@ -3,6 +3,7 @@ members = [
     "crates/compiler",
     "crates/include_sass",
     "crates/lib",
+    "crates/spec",
 ]
 
 [profile.release]
@@ -19,3 +20,11 @@ codegen-units = 1
 panic = 'abort'
 strip = true
 
+
+# The sass-spec runner (crates/spec, `cargo spec`): optimized, but panics unwind, so that a
+# panicking spec is one failure rather than the end of the run.
+[profile.spec]
+inherits = "release"
+panic = "unwind"
+lto = false
+codegen-units = 16

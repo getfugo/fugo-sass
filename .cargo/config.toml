@@ -1,0 +1,3 @@
+[alias]
+# Runs sass-spec against fugo-sass: `cargo spec [options] [PREFIX...]` (crates/spec/README.md).
+spec = "run --profile spec -p fugo-sass-spec --"

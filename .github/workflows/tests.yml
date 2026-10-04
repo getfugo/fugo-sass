@@ -51,6 +51,21 @@ jobs:
           rustup component add clippy
           cargo clippy --features=macro -- -D warnings
 
+  sass-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.70.0"
+
+      - name: Run sass-spec (crates/spec)
+        run: cargo spec --baseline crates/spec/failures.txt
+
   bootstrap:
     runs-on: ubuntu-latest
     steps:
@@ -84,26 +99,3 @@ jobs:
           else
               echo "No differences found"
           fi
-
-  # sass-spec:
-  #   continue-on-error: true
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@master
-  #     - uses: dtolnay/rust-toolchain@master
-  #       with:
-  #         toolchain: stable
-  #     - name: version info
-  #       run:  rustc --version; cargo --version;
-  #     - name: Build binary
-  #       run: cargo b --release
-  #     - name: Get sass-spec
-  #       run: git submodule init && git submodule update
-  #     - name: Install whatever Ruby needs
-  #       run: |
-  #         sudo apt-get install libncurses5-dev libncursesw5-dev
-  #         sudo gem install bundler
-  #         cd sass-spec && bundler install
-  #     - name: Run Sass spec
-  #       run: ./sass-spec/sass-spec.rb -c './target/release/fugo-sass'
