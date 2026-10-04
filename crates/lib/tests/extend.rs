@@ -1996,3 +1996,7 @@ fn extend_reaches_every_rule_of_a_selector() {
     .unwrap();
     assert_eq!(css.matches(".a,.b{").count(), 200, "{css}");
 }
+error!(
+    target_not_found,
+    "a {@extend .missing;}", "Error: The target selector was not found."
+);

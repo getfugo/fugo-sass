@@ -16,7 +16,7 @@ use super::{
 
 pub(crate) use extended_selector::ExtendedSelector;
 use extended_selector::SelectorHashSet;
-use extension::Extension;
+pub(crate) use extension::Extension;
 pub(crate) use functions::unify_complex;
 use functions::{paths, weave};
 use merged::MergedExtension;
@@ -935,6 +935,139 @@ impl ExtensionStore {
     /// The `media_context` defines the media query context in which the extension
     /// is defined. It can only extend selectors within the same context. A `None`
     /// context indicates no media queries.
+    /// Whether no `@extend` was added to this store.
+    pub fn is_empty(&self) -> bool {
+        self.extensions.is_empty()
+    }
+
+    /// The simple selectors in the style rules this store extends.
+    pub fn simple_selectors(&self) -> HashSet<SimpleSelector> {
+        self.selectors.keys().cloned().collect()
+    }
+
+    /// The mandatory extensions whose targets `callback` accepts, unmerged.
+    pub fn extensions_where_target(
+        &self,
+        callback: impl Fn(&SimpleSelector) -> bool,
+    ) -> Vec<Extension> {
+        let mut result = Vec::new();
+        for (target, sources) in &self.extensions {
+            if !callback(target) {
+                continue;
+            }
+            for extension in sources.values() {
+                result.extend(
+                    extension
+                        .unmerge()
+                        .into_iter()
+                        .filter(|extension| !extension.is_optional),
+                );
+            }
+        }
+        result
+    }
+
+    /// Extends this store's selectors (and extensions) with the extensions of `extension_stores`,
+    /// which are downstream of this one's module.
+    pub fn add_extensions(&mut self, extension_stores: &[&ExtensionStore]) -> SassResult<()> {
+        // Extensions already in `self` whose extenders are extended by the new extensions, and
+        // thus which need to be updated.
+        let mut extensions_to_extend: Option<Vec<Extension>> = None;
+
+        // Selectors that contain simple selectors that are extended by the new extensions, and
+        // thus which need to be extended themselves.
+        let mut selectors_to_extend: Option<SelectorHashSet> = None;
+
+        // An extension map with the same structure as `self.extensions` that only includes
+        // extensions from `extension_stores`.
+        let mut new_extensions: Option<
+            HashMap<SimpleSelector, IndexMap<ComplexSelector, Extension>>,
+        > = None;
+
+        for extension_store in extension_stores {
+            if extension_store.is_empty() {
+                continue;
+            }
+            self.source_specificity.extend(
+                extension_store
+                    .source_specificity
+                    .iter()
+                    .map(|(simple, specificity)| (simple.clone(), *specificity)),
+            );
+            for (target, new_sources) in &extension_store.extensions {
+                // Private selectors can't be extended across module boundaries.
+                if let SimpleSelector::Placeholder(name) = target {
+                    if name.starts_with('-') || name.starts_with('_') {
+                        continue;
+                    }
+                }
+
+                // Find existing extensions to extend.
+                let extensions_for_target = self.extensions_by_extender.get(target).cloned();
+                if let Some(extensions_for_target) = &extensions_for_target {
+                    extensions_to_extend
+                        .get_or_insert_with(Vec::new)
+                        .extend(extensions_for_target.iter().cloned());
+                }
+
+                // Find existing selectors to extend.
+                let selectors_for_target = self.selectors.get(target).cloned();
+                if let Some(selectors_for_target) = &selectors_for_target {
+                    selectors_to_extend
+                        .get_or_insert_with(SelectorHashSet::new)
+                        .extend(selectors_for_target.clone());
+                }
+
+                let has_existing =
+                    extensions_for_target.is_some() || selectors_for_target.is_some();
+
+                // Add `new_sources` to `self.extensions`.
+                match self.extensions.get_mut(target) {
+                    Some(existing_sources) => {
+                        for (extender, extension) in new_sources {
+                            let extension = match existing_sources.get(extender) {
+                                Some(existing) => {
+                                    MergedExtension::merge(existing.clone(), extension.clone())?
+                                }
+                                None => extension.clone(),
+                            };
+                            existing_sources.insert(extender.clone(), extension.clone());
+
+                            if has_existing {
+                                new_extensions
+                                    .get_or_insert_with(HashMap::new)
+                                    .entry(target.clone())
+                                    .or_insert_with(IndexMap::new)
+                                    .insert(extender.clone(), extension);
+                            }
+                        }
+                    }
+                    None => {
+                        self.extensions.insert(target.clone(), new_sources.clone());
+                        if has_existing {
+                            new_extensions
+                                .get_or_insert_with(HashMap::new)
+                                .insert(target.clone(), new_sources.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(new_extensions) = new_extensions {
+            // The return value only matters for extend loops, which can't cross modules.
+            if let Some(extensions_to_extend) = extensions_to_extend {
+                self.extend_existing_extensions(extensions_to_extend, &new_extensions)?;
+            }
+
+            if let Some(selectors_to_extend) = selectors_to_extend {
+                self.extend_existing_selectors(selectors_to_extend, &new_extensions);
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn add_extension(
         &mut self,
         extender: SelectorList,
@@ -976,20 +1109,16 @@ impl ExtensionStore {
 
             sources.insert(complex.clone(), state.clone());
 
-            for component in complex.components.clone() {
-                if let ComplexSelectorComponent::Compound(component) = component {
-                    for simple in component.components {
-                        self.extensions_by_extender
-                            .entry(simple.clone())
-                            .or_insert_with(Vec::new)
-                            .push(state.clone());
-                        // Only source specificity for the original selector is relevant.
-                        // Selectors generated by `@extend` don't get new specificity.
-                        self.source_specificity
-                            .entry(simple.clone())
-                            .or_insert_with(|| complex.max_specificity());
-                    }
-                }
+            for simple in simple_selectors(&complex) {
+                self.extensions_by_extender
+                    .entry(simple.clone())
+                    .or_insert_with(Vec::new)
+                    .push(state.clone());
+                // Only source specificity for the original selector is relevant.
+                // Selectors generated by `@extend` don't get new specificity.
+                self.source_specificity
+                    .entry(simple)
+                    .or_insert_with(|| complex.max_specificity());
             }
 
             if selectors.is_some() || existing_extensions.is_some() {
@@ -1184,4 +1313,26 @@ fn map_add_all_2<K1: Hash + Eq, K2: Hash + Eq, V>(
             }
         }
     }
+}
+
+/// The simple selectors in `complex`, those in pseudo-classes' selectors included.
+fn simple_selectors(complex: &ComplexSelector) -> Vec<SimpleSelector> {
+    let mut result = Vec::new();
+    for component in &complex.components {
+        if let ComplexSelectorComponent::Compound(compound) = component {
+            for simple in &compound.components {
+                result.push(simple.clone());
+                if let SimpleSelector::Pseudo(Pseudo {
+                    selector: Some(selector),
+                    ..
+                }) = simple
+                {
+                    for complex in &selector.components {
+                        result.extend(simple_selectors(complex));
+                    }
+                }
+            }
+        }
+    }
+    result
 }

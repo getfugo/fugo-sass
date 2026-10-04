@@ -25,6 +25,8 @@ pub(crate) struct Environment {
     pub imported_modules: Mutable<Vec<Mutable<Module>>>,
     #[allow(clippy::type_complexity)]
     pub nested_forwarded_modules: Option<Mutable<Vec<Mutable<Vec<Mutable<Module>>>>>>,
+    /// Every module this environment's module used, forwarded or imported: its upstream modules.
+    pub all_modules: Mutable<Vec<Mutable<Module>>>,
 }
 
 impl Environment {
@@ -37,6 +39,7 @@ impl Environment {
             forwarded_modules: Arc::new(RefCell::new(Vec::new())),
             imported_modules: Arc::new(RefCell::new(Vec::new())),
             nested_forwarded_modules: None,
+            all_modules: Arc::new(RefCell::new(Vec::new())),
         }
     }
 
@@ -49,6 +52,7 @@ impl Environment {
             forwarded_modules: Arc::clone(&self.forwarded_modules),
             imported_modules: Arc::clone(&self.imported_modules),
             nested_forwarded_modules: self.nested_forwarded_modules.as_ref().map(Arc::clone),
+            all_modules: Arc::clone(&self.all_modules),
         }
     }
 
@@ -61,6 +65,7 @@ impl Environment {
             forwarded_modules: Arc::clone(&self.forwarded_modules),
             imported_modules: Arc::clone(&self.imported_modules),
             nested_forwarded_modules: self.nested_forwarded_modules.as_ref().map(Arc::clone),
+            all_modules: Arc::clone(&self.all_modules),
         }
     }
 
@@ -68,6 +73,7 @@ impl Environment {
         Module::Environment {
             scope: ModuleScope::new(),
             upstream: Vec::new(),
+            contains_css: false,
             extension_store: ExtensionStore::new(span),
             env: self.clone(),
         }
@@ -236,6 +242,7 @@ impl Environment {
     }
 
     pub fn forward_module(&mut self, module: Arc<RefCell<Module>>, rule: AstForwardRule) {
+        self.all_modules.borrow_mut().push(Arc::clone(&module));
         let view = ForwardedModule::if_necessary(module, rule);
         (*self.forwarded_modules).borrow_mut().push(view);
 
@@ -430,6 +437,7 @@ impl Environment {
         module: Arc<RefCell<Module>>,
         span: Span,
     ) -> SassResult<()> {
+        self.all_modules.borrow_mut().push(Arc::clone(&module));
         match namespace {
             Some(namespace) => {
                 (*self.modules)
@@ -452,10 +460,18 @@ impl Environment {
         Ok(())
     }
 
-    pub fn to_module(self, extension_store: ExtensionStore) -> Arc<RefCell<Module>> {
+    pub fn to_module(
+        self,
+        extension_store: ExtensionStore,
+        contains_css: bool,
+    ) -> Arc<RefCell<Module>> {
         debug_assert!(self.at_root());
 
-        Arc::new(RefCell::new(Module::new_env(self, extension_store)))
+        Arc::new(RefCell::new(Module::new_env(
+            self,
+            extension_store,
+            contains_css,
+        )))
     }
 
     fn from_one_module<T>(

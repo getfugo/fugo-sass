@@ -53,18 +53,18 @@ impl MergedExtension {
 
     fn into_extension(left: Extension, right: Extension) -> Extension {
         Extension {
-            extender: left.extender,
-            target: left.target,
+            extender: left.extender.clone(),
+            target: left.target.clone(),
             span: left.span,
-            media_context: match left.media_context {
-                Some(v) => Some(v),
-                None => right.media_context,
+            media_context: match &left.media_context {
+                Some(v) => Some(v.clone()),
+                None => right.media_context.clone(),
             },
             specificity: left.specificity,
             is_optional: true,
             is_original: false,
-            left: None,
-            right: None,
+            left: Some(Box::new(left)),
+            right: Some(Box::new(right)),
         }
     }
 }

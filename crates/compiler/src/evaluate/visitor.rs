@@ -1,6 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
-    collections::{BTreeMap, BTreeSet, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
     ffi::OsStr,
     fmt,
     iter::FromIterator,
@@ -32,8 +32,8 @@ use crate::{
         StylesheetParser,
     },
     selector::{
-        ComplexSelectorComponent, ExtendRule, ExtendedSelector, ExtensionStore, SelectorList,
-        SelectorParser,
+        ComplexSelectorComponent, ExtendRule, ExtendedSelector, Extension, ExtensionStore,
+        SelectorList, SelectorParser,
     },
     serializer::serialize_calculation_arg,
     utils::{to_sentence, trim_ascii},
@@ -111,6 +111,72 @@ pub(crate) struct CallableContentBlock {
     env: Environment,
 }
 
+/// Whether `module` or a module upstream of it wrote CSS.
+fn transitively_contains_css(
+    module: &Arc<RefCell<Module>>,
+    memo: &mut HashMap<*const RefCell<Module>, bool>,
+) -> bool {
+    let key = Arc::as_ptr(module);
+    if let Some(&contains_css) = memo.get(&key) {
+        return contains_css;
+    }
+    let result = match &*module.borrow() {
+        Module::Environment {
+            contains_css,
+            upstream,
+            ..
+        } => {
+            *contains_css
+                || upstream
+                    .iter()
+                    .any(|upstream| transitively_contains_css(upstream, memo))
+        }
+        _ => false,
+    };
+    memo.insert(key, result);
+    result
+}
+
+/// The modules upstream of a document using `upstream`, downstream ones first (dart-sass's
+/// `_topologicalModules`, without the root).
+fn topological_modules(upstream: &[Arc<RefCell<Module>>]) -> Vec<Arc<RefCell<Module>>> {
+    fn visit(
+        module: &Arc<RefCell<Module>>,
+        seen: &mut HashSet<*const RefCell<Module>>,
+        sorted: &mut VecDeque<Arc<RefCell<Module>>>,
+    ) {
+        if let Module::Environment { upstream, .. } = &*module.borrow() {
+            for upstream in upstream {
+                if seen.insert(Arc::as_ptr(upstream)) {
+                    visit(upstream, seen, sorted);
+                }
+            }
+        }
+        sorted.push_front(Arc::clone(module));
+    }
+
+    let mut seen = HashSet::new();
+    let mut sorted = VecDeque::new();
+    for module in upstream {
+        if seen.insert(Arc::as_ptr(module)) {
+            visit(module, &mut seen, &mut sorted);
+        }
+    }
+    sorted.into()
+}
+
+/// The error for a mandatory `@extend` whose target is in no style rule.
+fn unsatisfied_extension(extension: &Extension) -> Box<SassError> {
+    (
+        format!(
+            "The target selector was not found.\nUse \"@extend {} !optional\" to avoid this error.",
+            extension.target.as_ref().unwrap()
+        ),
+        extension.span,
+    )
+        .into()
+}
+
 /// The value of a CSS `if()` condition: known at compile time, or CSS for the browser.
 enum IfConditionResult {
     Bool(bool),
@@ -145,6 +211,9 @@ pub struct Visitor<'a> {
     parent: Option<CssTreeIdx>,
     configuration: Rc<RefCell<Configuration>>,
     import_nodes: Vec<CssStmt>,
+    /// How many root statements the modules executed by the current one wrote, to tell whether a
+    /// module wrote CSS itself.
+    nested_module_css: usize,
     pub options: &'a Options<'a>,
     pub(crate) map: &'a mut CodeMap,
     // todo: remove
@@ -183,6 +252,7 @@ impl<'a> Visitor<'a> {
             extender,
             css_tree: CssTree::new(),
             parent: None,
+            nested_module_css: 0,
             current_import_path,
             configuration: Rc::new(RefCell::new(Configuration::empty())),
             is_plain_css: false,
@@ -216,13 +286,121 @@ impl<'a> Visitor<'a> {
         Ok(())
     }
 
-    pub(crate) fn finish(mut self) -> Vec<CssStmt> {
+    pub(crate) fn finish(mut self) -> SassResult<Vec<CssStmt>> {
+        self.extend_modules()?;
+
         let mut finished_tree = self.css_tree.finish();
         if self.import_nodes.is_empty() {
-            finished_tree
+            Ok(finished_tree)
         } else {
             self.import_nodes.append(&mut finished_tree);
-            self.import_nodes
+            Ok(self.import_nodes)
+        }
+    }
+
+    /// Applies each module's `@extend`s to the modules upstream of it, and errors for a mandatory
+    /// `@extend` whose target no module has (the extension part of dart-sass's `_combineCss` and
+    /// `_extendModules`).
+    fn extend_modules(&mut self) -> SassResult<()> {
+        let root_upstream = self.env.all_modules.borrow().clone();
+
+        let mut contains_css = HashMap::new();
+        if !root_upstream
+            .iter()
+            .any(|module| transitively_contains_css(module, &mut contains_css))
+        {
+            let selectors = self.extender.simple_selectors();
+            if let Some(extension) = self
+                .extender
+                .extensions_where_target(|target| !selectors.contains(target))
+                .into_iter()
+                .next()
+            {
+                return Err(unsatisfied_extension(&extension));
+            }
+            return Ok(());
+        }
+
+        // Downstream modules first; the root module (this document) is the first of all.
+        let sorted = topological_modules(&root_upstream);
+
+        // The extension stores directly downstream of each module, by the module's address.
+        let mut downstream_stores: HashMap<*const RefCell<Module>, Vec<Arc<RefCell<Module>>>> =
+            HashMap::new();
+        // Whether the root's store is downstream of each module.
+        let mut downstream_of_root: HashSet<*const RefCell<Module>> = HashSet::new();
+        // Extensions that no upstream module has satisfied yet.
+        let mut unsatisfied = Vec::new();
+
+        let original_selectors = self.extender.simple_selectors();
+        unsatisfied.extend(
+            self.extender
+                .extensions_where_target(|target| !original_selectors.contains(target)),
+        );
+        if !self.extender.is_empty() {
+            for upstream in &root_upstream {
+                downstream_of_root.insert(Arc::as_ptr(upstream));
+            }
+            unsatisfied.retain(|extension: &Extension| {
+                !original_selectors.contains(extension.target.as_ref().unwrap())
+            });
+        }
+
+        for module in sorted {
+            let key = Arc::as_ptr(&module);
+            let downstream = downstream_stores.remove(&key).unwrap_or_default();
+            let downstream_guards: Vec<_> = downstream.iter().map(|m| m.borrow()).collect();
+            let mut stores: Vec<&ExtensionStore> = downstream_guards
+                .iter()
+                .filter_map(|module| match &**module {
+                    Module::Environment {
+                        extension_store, ..
+                    } => Some(extension_store),
+                    _ => None,
+                })
+                .collect();
+            if downstream_of_root.contains(&key) {
+                stores.push(&self.extender);
+            }
+
+            let mut module_ref = module.borrow_mut();
+            let (extension_store, upstream) = match &mut *module_ref {
+                Module::Environment {
+                    extension_store,
+                    upstream,
+                    ..
+                } => (extension_store, upstream),
+                _ => continue,
+            };
+
+            let original_selectors = extension_store.simple_selectors();
+            unsatisfied.extend(
+                extension_store
+                    .extensions_where_target(|target| !original_selectors.contains(target)),
+            );
+
+            if !stores.is_empty() {
+                extension_store.add_extensions(&stores)?;
+            }
+            if extension_store.is_empty() {
+                continue;
+            }
+
+            for upstream in upstream.iter() {
+                downstream_stores
+                    .entry(Arc::as_ptr(upstream))
+                    .or_default()
+                    .push(Arc::clone(&module));
+            }
+
+            unsatisfied.retain(|extension: &Extension| {
+                !original_selectors.contains(extension.target.as_ref().unwrap())
+            });
+        }
+
+        match unsatisfied.first() {
+            Some(extension) => Err(unsatisfied_extension(extension)),
+            None => Ok(()),
         }
     }
 
@@ -621,6 +799,8 @@ impl<'a> Visitor<'a> {
 
         let env = Environment::new();
         let mut extension_store = ExtensionStore::new(self.empty_span);
+        let css_before = self.css_tree.root_len() + self.import_nodes.len();
+        let outer_nested_module_css = mem::take(&mut self.nested_module_css);
 
         self.with_environment::<SassResult<()>, _>(env.new_closure(), |visitor| {
             let old_parent = visitor.parent;
@@ -676,7 +856,11 @@ impl<'a> Visitor<'a> {
             Ok(())
         })?;
 
-        let module = env.to_module(extension_store);
+        let css_written = self.css_tree.root_len() + self.import_nodes.len() - css_before;
+        let contains_css = css_written > self.nested_module_css;
+        self.nested_module_css = outer_nested_module_css + css_written;
+
+        let module = env.to_module(extension_store, contains_css);
 
         self.modules.insert(url, Arc::clone(&module));
 

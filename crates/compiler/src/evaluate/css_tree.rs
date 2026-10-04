@@ -73,6 +73,11 @@ impl CssTree {
         }
     }
 
+    /// How many statements are at the root of the document.
+    pub fn root_len(&self) -> usize {
+        self.parent_to_child.get(&Self::ROOT).map_or(0, Vec::len)
+    }
+
     fn has_children(&self, parent: CssTreeIdx) -> bool {
         self.parent_to_child.contains_key(&parent)
     }
