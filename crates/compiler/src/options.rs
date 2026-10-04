@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{builtin::Builtin, Fs, Logger, StdFs, StdLogger};
+use crate::{Fs, Logger, StdFs, StdLogger, builtin::Builtin};
 
 /// Configuration for Sass compilation
 ///
@@ -171,7 +171,7 @@ impl<'a> Options<'a> {
     #[must_use]
     #[inline]
     #[cfg(any(feature = "custom-builtin-fns", doc))]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "custom-builtin-fns")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "custom-builtin-fns")))]
     pub fn add_custom_fn<S: Into<String>>(mut self, name: S, func: Builtin) -> Self {
         self.custom_fns.insert(name.into(), func);
         self

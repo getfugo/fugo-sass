@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
-use fugo_sass_spec::{table, Failure, Mode, Outcome, Suite};
+use fugo_sass_spec::{Failure, Mode, Outcome, Suite, table};
 
 const USAGE: &str = "\
 usage: fugo-sass-spec [options] [PREFIX...]

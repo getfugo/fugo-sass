@@ -137,7 +137,7 @@ impl IfCondition {
                      expressions.",
                     substitution,
                 )
-                    .into())
+                    .into());
             }
             Self::Raw(text, _) => buffer.add_interpolation(text.clone()),
         }
@@ -228,10 +228,10 @@ impl StringExpr {
             if char == '\n' || char == '\r' {
                 buffer.add_char('\\');
                 buffer.add_char('a');
-                if let Some(next) = chars.peek() {
-                    if next.is_ascii_whitespace() || next.is_ascii_hexdigit() {
-                        buffer.add_char(' ');
-                    }
+                if let Some(next) = chars.peek()
+                    && (next.is_ascii_whitespace() || next.is_ascii_hexdigit())
+                {
+                    buffer.add_char(' ');
                 }
             } else {
                 if char == quote
@@ -257,11 +257,7 @@ impl StringExpr {
                 }
             }
         }
-        if contains_double_quote {
-            '\''
-        } else {
-            '"'
-        }
+        if contains_double_quote { '\'' } else { '"' }
     }
 
     pub fn as_interpolation(self, is_static: bool) -> Interpolation {

@@ -112,17 +112,16 @@ cd fugo-sass && cargo spec
 ```
 
 The `sass-spec` submodule is pinned to the specs of `dart-sass` 1.105.1, the release fugo-sass
-works towards. There fugo-sass passes 7,342 of the 14,347 specs that apply to `dart-sass` (51%):
-most failures are features `dart-sass` added after 1.54.3: the color functions, mostly for the CSS
-Color 4 color spaces (5,223 failing specs), the new calculations (434) and CSS-style `if()`
-(164). CI checks that the failing specs are exactly those of
+works towards. There fugo-sass passes 8,612 of the 14,347 specs that apply to `dart-sass` (60%):
+most of the 5,735 failures are the color functions, mostly for the CSS Color 4 color spaces
+(5,194). CI checks that the failing specs are exactly those of
 [`crates/spec/failures.txt`](crates/spec/failures.txt).
 
 ## Versioning
 
-The minimum supported rust version (MSRV) is `1.70.0`. An increase to the MSRV will correspond
-with a minor version bump. The current MSRV is not a hard minimum, but future bugfix versions are
-not guaranteed to work on versions prior to this.
+The crates use the 2024 edition. The minimum supported Rust version (MSRV) is `1.96.0`, that of
+[fugo](https://github.com/getfugo/fugo), and CI builds every crate with it; CI tests and lints with
+the latest stable Rust. An increase to the MSRV will correspond with a minor version bump.
 
 An increase to the targeted `dart-sass` version will correspond to either a minor or bugfix
 version bump, depending on the changes.

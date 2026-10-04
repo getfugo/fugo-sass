@@ -4,15 +4,15 @@ use std::{path::Path, sync::Arc};
 use codemap::{Span, Spanned};
 
 use crate::{
+    ContextFlags, Options,
     ast::*,
     builtin::DISALLOWED_PLAIN_CSS_FUNCTION_NAMES,
     common::{Identifier, QuoteKind},
     error::SassResult,
     lexer::Lexer,
-    ContextFlags, Options,
 };
 
-use super::{value::ValueParser, BaseParser, StylesheetParser};
+use super::{BaseParser, StylesheetParser, value::ValueParser};
 
 pub(crate) struct CssParser<'a> {
     pub toks: Lexer,
@@ -53,7 +53,7 @@ impl<'a> StylesheetParser<'a> for CssParser<'a> {
         self.path
     }
 
-    fn options(&self) -> &Options {
+    fn options(&self) -> &Options<'_> {
         self.options
     }
 

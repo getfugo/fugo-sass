@@ -659,12 +659,12 @@ pub fn run(
         {
             let mut running = shared.running.lock().unwrap();
             for run in running.iter_mut() {
-                if let Some((i, since)) = *run {
-                    if since.elapsed() > timeout {
-                        // Its worker sees the empty slot when (if) it returns, and stops.
-                        *run = None;
-                        stuck.push(i);
-                    }
+                if let Some((i, since)) = *run
+                    && since.elapsed() > timeout
+                {
+                    // Its worker sees the empty slot when (if) it returns, and stops.
+                    *run = None;
+                    stuck.push(i);
                 }
             }
         }

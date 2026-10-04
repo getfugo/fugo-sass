@@ -54,7 +54,7 @@ fn inner_rgb_2_arg(
                 return Ok(Value::String(
                     function_string(name, &[color, alpha], visitor, args.span())?,
                     QuoteKind::None,
-                ))
+                ));
             }
         }
     } else if alpha.is_special_function() {
@@ -103,15 +103,11 @@ fn inner_rgb_3_arg(
             .map(|alpha| alpha.node.is_special_function())
             .unwrap_or(false)
     {
-        let fn_string = if alpha.is_some() {
-            function_string(
-                name,
-                &[red, green, blue, alpha.unwrap().node],
-                visitor,
-                args.span(),
-            )?
-        } else {
-            function_string(name, &[red, green, blue], visitor, args.span())?
+        let fn_string = match alpha {
+            Some(alpha) => {
+                function_string(name, &[red, green, blue, alpha.node], visitor, args.span())?
+            }
+            None => function_string(name, &[red, green, blue], visitor, args.span())?,
         };
 
         return Ok(Value::String(fn_string, QuoteKind::None));
@@ -404,7 +400,7 @@ pub(crate) fn mix(mut args: ArgumentResult, visitor: &mut Visitor) -> SassResult
                 ),
                 args.span(),
             )
-                .into())
+                .into());
         }
     };
     Ok(Value::Color(Arc::new(color1.mix(&color2, weight))))
