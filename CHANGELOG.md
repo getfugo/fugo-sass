@@ -18,6 +18,10 @@
   specs of `dart-sass` 1.105.1; CI checks the failing specs against `crates/spec/failures.txt`
 - the indented syntax reports `Nothing may be indented beneath a @import rule.` (and `@return rule`)
   where it panicked; `@import` and `@return` end their statements as `dart-sass` expects
+- `selector.replace(..)` and `selector.unify(..)` reject parent selectors (`&`) as `dart-sass` does,
+  where `selector.replace(..)` panicked; errors in selector arguments start with the argument's
+  name (`$selector1: expected more input.`), except for `selector.nest(..)` and
+  `selector.append(..)`, whose errors `dart-sass` does not prefix
 
 # 0.14.0
 

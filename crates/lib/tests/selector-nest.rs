@@ -167,12 +167,12 @@ error!(
 error!(
     unquoted_integer_first_arg,
     "a {\n  color: selector-nest(1);\n}\n",
-    "Error: $selectors: 1 is not a valid selector: it must be a string,"
+    "Error: 1 is not a valid selector: it must be a string,"
 );
 error!(
     unquoted_integer_second_arg,
     "a {\n  color: selector-nest(\"c\", 1);\n}\n",
-    "Error: $selectors: 1 is not a valid selector: it must be a string,"
+    "Error: 1 is not a valid selector: it must be a string,"
 );
 error!(
     empty_args,

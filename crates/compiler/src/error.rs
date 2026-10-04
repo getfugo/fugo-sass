@@ -49,6 +49,15 @@ impl SassError {
         }
     }
 
+    /// This error as one about the argument `$name`: its message prefixed as dart-sass's
+    /// `SassScriptException(message, name)` does (`$name: message`).
+    pub(crate) fn with_argument_name(mut self: Box<Self>, name: &str) -> Box<Self> {
+        if let SassErrorKind::Raw(message, _) = &mut self.kind {
+            *message = format!("${name}: {message}");
+        }
+        self
+    }
+
     pub(crate) fn raw(self) -> (String, Span) {
         match self.kind {
             SassErrorKind::Raw(string, span) => (string, span),
