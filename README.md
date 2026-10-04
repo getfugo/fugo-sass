@@ -40,7 +40,7 @@ The API is grass's. Renaming the dependency keeps every `grass::` path working:
 
 ```toml
 [dependencies]
-grass = { package = "fugo-sass", version = "0.14" }
+grass = { package = "fugo-sass", version = "0.15" }
 ```
 
 The crates were renamed: `grass` is `fugo-sass` (binary `fugo-sass`), `grass_compiler` is

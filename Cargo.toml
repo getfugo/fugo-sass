@@ -9,7 +9,7 @@ members = [
 
 # What the crates share: they inherit it with `<key>.workspace = true`.
 [workspace.package]
-version = "0.14.0"
+version = "0.15.0"
 edition = "2024"
 rust-version = "1.99"
 license = "MIT"
@@ -24,8 +24,8 @@ keywords = ["scss", "sass", "css", "web"]
 # own `features` or `optional`).
 [workspace.dependencies]
 # The workspace's crates, at exactly `workspace.package.version`.
-fugo-sass-compiler = { path = "crates/compiler", version = "=0.14.0", default-features = false }
-fugo-sass-macro = { path = "crates/include_sass", version = "=0.14.0" }
+fugo-sass-compiler = { path = "crates/compiler", version = "=0.15.0", default-features = false }
+fugo-sass-macro = { path = "crates/include_sass", version = "=0.15.0" }
 
 clap = "4.6.7"
 codemap = "0.1.3"
