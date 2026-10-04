@@ -177,6 +177,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fugo-sass-spec"
+version = "0.0.0"
+dependencies = [
+ "fugo-sass-compiler",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
