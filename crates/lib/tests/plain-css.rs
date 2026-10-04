@@ -200,7 +200,7 @@ error!(
     "%a {
         color: red;
     }",
-    "Error: Placeholder selectors aren't allowed here.",
+    "Error: Placeholder selectors aren't allowed in plain CSS.",
     fugo_sass::Options::default().input_syntax(InputSyntax::Css)
 );
 test!(
@@ -247,5 +247,12 @@ error!(
         }
     }",
     "Error: Nested declarations aren't allowed in plain CSS.",
+    fugo_sass::Options::default().input_syntax(InputSyntax::Css)
+);
+test!(
+    // dart-sass 1.73: nesting in plain CSS is written as is.
+    nesting_is_kept,
+    "a {\n  b: c;\n  & d {e: f}\n  @media screen {g: h}\n}\n",
+    "a {\n  b: c;\n  & d {\n    e: f;\n  }\n}\n@media screen {\n  a {\n    g: h;\n  }\n}\n",
     fugo_sass::Options::default().input_syntax(InputSyntax::Css)
 );

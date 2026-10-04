@@ -992,10 +992,7 @@ error!(
     ":#ab {}", "Error: Expected identifier."
 );
 error!(nothing_after_colon, "a:{}", "Error: Expected identifier.");
-error!(
-    toplevel_parent_selector_after_combinator,
-    "~&{}", "Error: Top-level selectors may not contain the parent selector \"&\"."
-);
+test!(toplevel_parent_selector_after_combinator, "~&{}", "");
 error!(
     toplevel_parent_selector_after_element,
     "a&{}", "Error: \"&\" may only used at the beginning of a compound selector."
@@ -1050,4 +1047,14 @@ test!(
 error!(
     nth_child_loud_comment_between_n_and_of,
     ":nth-child(n/**/of a) {\n  color: &;\n}\n", "Error: expected \")\"."
+);
+test!(
+    // dart-sass 1.99: a parent selector at the root of the document is written as is.
+    toplevel_parent_selector_is_kept,
+    "& {a: b}\n& .c {d: e}\n",
+    "& {\n  a: b;\n}\n\n& .c {\n  d: e;\n}\n"
+);
+error!(
+    toplevel_parent_selector_with_suffix,
+    "&-a {b: c}", "Error: A top-level selector may not contain a parent selector with a suffix."
 );

@@ -108,6 +108,11 @@ pub struct Visitor<'a> {
     pub(crate) flags: ContextFlags,
     pub(crate) env: Environment,
     pub(crate) style_rule_ignoring_at_root: Option<ExtendedSelector>,
+    /// Whether the style rule `style_rule_ignoring_at_root` comes from plain CSS, whose nested
+    /// rules are written as CSS nesting (dart-sass's `CssStyleRule.fromPlainCss`).
+    style_rule_from_plain_css: bool,
+    /// The node of `style_rule_ignoring_at_root` in the CSS tree.
+    style_rule_idx: Option<CssTreeIdx>,
     // avoid emitting duplicate warnings for the same span
     pub(crate) warnings_emitted: HashSet<Span>,
     pub(crate) media_queries: Option<Vec<MediaQuery>>,
@@ -152,6 +157,8 @@ impl<'a> Visitor<'a> {
         Self {
             declaration_name: None,
             style_rule_ignoring_at_root: None,
+            style_rule_from_plain_css: false,
+            style_rule_idx: None,
             flags,
             warnings_emitted: HashSet::new(),
             media_queries: None,
@@ -495,6 +502,21 @@ impl<'a> Visitor<'a> {
 
         let children = supports_rule.body;
 
+        // In plain CSS nesting, the rule is written where it is (see `visit_media_rule`).
+        if self.has_css_nesting() {
+            return self.with_parent(
+                css_supports_rule,
+                true,
+                |visitor| {
+                    for stmt in children {
+                        visitor.visit_stmt(stmt)?;
+                    }
+                    Ok(())
+                },
+                |_| false,
+            );
+        }
+
         self.with_parent(
             css_supports_rule,
             true,
@@ -588,6 +610,8 @@ impl<'a> Visitor<'a> {
             let old_parent = visitor.parent;
             mem::swap(&mut visitor.extender, &mut extension_store);
             let old_style_rule = visitor.style_rule_ignoring_at_root.take();
+            let old_style_rule_from_plain_css = mem::take(&mut visitor.style_rule_from_plain_css);
+            let old_style_rule_idx = visitor.style_rule_idx.take();
             let old_media_queries = visitor.media_queries.take();
             let old_declaration_name = visitor.declaration_name.take();
             let old_in_unknown_at_rule = visitor.flags.in_unknown_at_rule();
@@ -615,6 +639,8 @@ impl<'a> Visitor<'a> {
             // visitor.out_of_order_imports = old_out_of_order_imports;
             mem::swap(&mut visitor.extender, &mut extension_store);
             visitor.style_rule_ignoring_at_root = old_style_rule;
+            visitor.style_rule_from_plain_css = old_style_rule_from_plain_css;
+            visitor.style_rule_idx = old_style_rule_idx;
             visitor.media_queries = old_media_queries;
             visitor.declaration_name = old_declaration_name;
             visitor
@@ -1378,6 +1404,30 @@ impl<'a> Visitor<'a> {
         }
 
         let queries1 = self.visit_media_queries(media_rule.query, media_rule.query_span)?;
+
+        // In plain CSS nesting, the rule is written where it is, without merging or bubbling:
+        // only browsers that support nesting can use it anyway.
+        if self.has_css_nesting() {
+            let rule = CssStmt::Media(
+                MediaRule {
+                    query: queries1,
+                    body: Vec::new(),
+                },
+                false,
+            );
+            self.with_parent(
+                rule,
+                false,
+                |visitor| {
+                    for stmt in media_rule.body {
+                        visitor.visit_stmt(stmt)?;
+                    }
+                    Ok(())
+                },
+                |_| false,
+            )?;
+            return Ok(None);
+        }
         // todo: superfluous clone?
         let queries2 = self.media_queries.clone();
         let merged_queries = queries2
@@ -1517,6 +1567,9 @@ impl<'a> Visitor<'a> {
 
         let children = unknown_at_rule.body.unwrap();
 
+        // `@font-face` in a style rule is pulled out to the root (dart-sass 1.58.4).
+        let is_font_face = name == "font-face";
+
         let stmt = CssStmt::UnknownAtRule(
             UnknownAtRule {
                 name,
@@ -1527,11 +1580,30 @@ impl<'a> Visitor<'a> {
             false,
         );
 
+        // In plain CSS nesting, the rule is written where it is (see `visit_media_rule`).
+        if self.has_css_nesting() {
+            self.with_parent(
+                stmt,
+                true,
+                |visitor| {
+                    for stmt in children {
+                        visitor.visit_stmt(stmt)?;
+                    }
+                    Ok(())
+                },
+                |_| false,
+            )?;
+            self.flags.set(ContextFlags::IN_KEYFRAMES, was_in_keyframes);
+            self.flags
+                .set(ContextFlags::IN_UNKNOWN_AT_RULE, was_in_unknown_at_rule);
+            return Ok(None);
+        }
+
         self.with_parent(
             stmt,
             true,
             |visitor| {
-                if !visitor.style_rule_exists() || visitor.flags.in_keyframes() {
+                if !visitor.style_rule_exists() || visitor.flags.in_keyframes() || is_font_face {
                     for stmt in children {
                         let result = visitor.visit_stmt(stmt)?;
                         debug_assert!(result.is_none());
@@ -1664,6 +1736,33 @@ impl<'a> Visitor<'a> {
     /// If the current parent is not the last child of its own parent, continues in a new
     /// childless copy of it (dart-sass's `_copyParentAfterSibling`), so that declarations,
     /// comments and childless at-rules after a nested rule are written after it.
+    /// Whether the current style rule is written nested in another one, as plain CSS nesting
+    /// (dart-sass's `_hasCssNesting`).
+    fn has_css_nesting(&self) -> bool {
+        if !self.style_rule_exists() {
+            return false;
+        }
+        let mut idx = match self.style_rule_idx {
+            Some(idx) => idx,
+            None => return false,
+        };
+        while let Some(&parent) = self.css_tree.child_to_parent.get(&idx) {
+            if parent == CssTree::ROOT {
+                return false;
+            }
+            if self
+                .css_tree
+                .get(parent)
+                .as_ref()
+                .map_or(false, CssStmt::is_style_rule)
+            {
+                return true;
+            }
+            idx = parent;
+        }
+        false
+    }
+
     fn copy_parent_after_sibling(&mut self) {
         let parent = match self.parent {
             Some(parent) if parent != CssTree::ROOT => parent,
@@ -3248,20 +3347,50 @@ impl<'a> Visitor<'a> {
             return Ok(None);
         }
 
-        let mut parsed_selector = self.parse_selector_from_string(
-            &selector_text,
-            !self.is_plain_css,
-            !self.is_plain_css,
-            ruleset.selector_span,
-        )?;
+        let mut parsed_selector = if self.is_plain_css {
+            let sel_toks = Lexer::new_from_string(&selector_text, ruleset.selector_span);
+            SelectorParser::new(sel_toks, true, false, ruleset.selector_span)
+                .plain_css()
+                .parse()?
+        } else {
+            self.parse_selector_from_string(&selector_text, true, true, ruleset.selector_span)?
+        };
 
-        parsed_selector = parsed_selector.resolve_parent_selectors(
-            self.style_rule_ignoring_at_root
-                .as_ref()
-                // todo: this clone should be superfluous(?)
-                .map(|x| x.as_selector_list().clone()),
-            !self.flags.at_root_excluding_style_rule(),
-        )?;
+        // As dart-sass: nest the selector within its parent's and write the rule after the parent,
+        // unless the rule is written nested, as CSS nesting: a rule nested in plain CSS, or a plain
+        // CSS rule with `&` in a Sass rule.
+        let merge = if !self.style_rule_exists() {
+            true
+        } else if self.style_rule_from_plain_css {
+            false
+        } else {
+            !(self.is_plain_css && parsed_selector.contains_parent_selector())
+        };
+        if merge {
+            if self.is_plain_css
+                && parsed_selector.components.iter().any(|complex| {
+                    matches!(
+                        complex.components.first(),
+                        Some(ComplexSelectorComponent::Combinator(..))
+                    )
+                })
+            {
+                return Err((
+                    "Top-level leading combinators aren't allowed in plain CSS.",
+                    ruleset.selector_span,
+                )
+                    .into());
+            }
+
+            parsed_selector = parsed_selector.resolve_parent_selectors(
+                self.style_rule_ignoring_at_root
+                    .as_ref()
+                    // todo: this clone should be superfluous(?)
+                    .map(|x| x.as_selector_list().clone()),
+                !self.flags.at_root_excluding_style_rule(),
+                self.is_plain_css,
+            )?;
+        }
 
         // todo: _mediaQueries
         let selector = self
@@ -3281,11 +3410,21 @@ impl<'a> Visitor<'a> {
 
         let old_style_rule_ignoring_at_root = self.style_rule_ignoring_at_root.take();
         self.style_rule_ignoring_at_root = Some(selector);
+        let old_style_rule_from_plain_css =
+            mem::replace(&mut self.style_rule_from_plain_css, self.is_plain_css);
+        let old_style_rule_idx = self.style_rule_idx;
 
+        // A merged rule goes after its parent rules; a nested one into its parent.
+        let through: fn(&CssStmt) -> bool = if merge {
+            CssStmt::is_style_rule
+        } else {
+            |_| false
+        };
         self.with_parent(
             rule,
             true,
             |visitor| {
+                visitor.style_rule_idx = visitor.parent;
                 for stmt in ruleset_body {
                     let result = visitor.visit_stmt(stmt)?;
                     debug_assert!(result.is_none());
@@ -3293,10 +3432,12 @@ impl<'a> Visitor<'a> {
 
                 Ok(())
             },
-            CssStmt::is_style_rule,
+            through,
         )?;
 
         self.style_rule_ignoring_at_root = old_style_rule_ignoring_at_root;
+        self.style_rule_from_plain_css = old_style_rule_from_plain_css;
+        self.style_rule_idx = old_style_rule_idx;
         self.flags.set(
             ContextFlags::AT_ROOT_EXCLUDING_STYLE_RULE,
             old_at_root_excluding_style_rule,
