@@ -1023,6 +1023,7 @@ impl<'a> Visitor<'a> {
         let node = CssStmt::Import(import, modifiers);
 
         if self.parent.is_some() && self.parent != Some(CssTree::ROOT) {
+            self.copy_parent_after_sibling();
             self.css_tree.add_stmt(node, self.parent);
         } else {
             self.import_nodes.push(node);
@@ -1499,6 +1500,7 @@ impl<'a> Visitor<'a> {
                 false,
             );
 
+            self.copy_parent_after_sibling();
             self.css_tree.add_stmt(stmt, self.parent);
 
             return Ok(None);
@@ -1657,6 +1659,27 @@ impl<'a> Visitor<'a> {
         }
 
         self.css_tree.add_child(node, parent)
+    }
+
+    /// If the current parent is not the last child of its own parent, continues in a new
+    /// childless copy of it (dart-sass's `_copyParentAfterSibling`), so that declarations,
+    /// comments and childless at-rules after a nested rule are written after it.
+    fn copy_parent_after_sibling(&mut self) {
+        let parent = match self.parent {
+            Some(parent) if parent != CssTree::ROOT => parent,
+            _ => return,
+        };
+        if !self.css_tree.has_following_sibling(parent) {
+            return;
+        }
+        let grandparent = self.css_tree.child_to_parent[&parent];
+        let copy = self
+            .css_tree
+            .get(parent)
+            .as_ref()
+            .expect("a parent is a statement")
+            .copy_without_children();
+        self.parent = Some(self.css_tree.add_child(copy, grandparent));
     }
 
     fn with_parent<F: FnOnce(&mut Self) -> SassResult<()>, FT: Fn(&CssStmt) -> bool>(
@@ -1959,6 +1982,7 @@ impl<'a> Visitor<'a> {
             self.perform_interpolation(comment.text, false)?,
             comment.span,
         );
+        self.copy_parent_after_sibling();
         self.css_tree.add_stmt(comment, self.parent);
 
         Ok(None)
@@ -3334,8 +3358,10 @@ impl<'a> Visitor<'a> {
             .transpose()?
         {
             // If the value is an empty list, preserve it, because converting it to CSS
-            // will throw an error that we want the user to see.
-            if !value.is_blank() || value.is_empty_list() {
+            // will throw an error that we want the user to see. Custom properties are allowed
+            // to have empty values, per spec.
+            if !value.is_blank() || value.is_empty_list() || name.starts_with("--") {
+                self.copy_parent_after_sibling();
                 // todo: superfluous clones?
                 self.css_tree.add_stmt(
                     CssStmt::Style(Style {
@@ -3345,8 +3371,6 @@ impl<'a> Visitor<'a> {
                     }),
                     self.parent,
                 );
-            } else if name.starts_with("--") {
-                return Err(("Custom property values may not be empty.", style.span).into());
             }
         }
 

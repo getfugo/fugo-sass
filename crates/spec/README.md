@@ -54,3 +54,12 @@ cargo spec --write-baseline crates/spec/failures.txt
 --timeout SECS          fail a spec still compiling after SECS (default 20)
 PREFIX...               run only the specs whose names start with a PREFIX
 ```
+
+## Bootstrap
+
+CI also compiles Bootstrap 5.0.2 and 5.3.3 with `dart-sass` 1.105.1 and with fugo-sass, and checks
+that the differences between the two CSS files (`git diff --no-index dart-sass.css
+fugo-sass.css`) are exactly those of `bootstrap/<version>.diff`. Like the spec baseline, the
+differences may only shrink: after a change that removes some, regenerate the file with
+`crates/spec/bootstrap.sh DART_SASS FUGO_SASS BOOTSTRAP_CHECKOUT WORK_DIR > <version>.diff`, as the
+`bootstrap` job of `.github/workflows/tests.yml` does.

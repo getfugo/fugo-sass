@@ -41,6 +41,11 @@
   `math.floor()` never give `-0`; `$a / f()` divides unless `f()` is a calculation
 - `color.opacity()` exists in `sass:color`; a module function that does not exist is an
   `Undefined function.` error rather than a global function of the same name
+- declarations, comments, childless at-rules and nested `@import`s after a nested rule are written
+  after it, in source order, as `dart-sass` 1.92 writes them (they were moved before it); custom
+  properties may have empty values (`--a:;`)
+- CI compares Bootstrap 5.0.2's and 5.3.3's CSS with `dart-sass` 1.105.1's (the differences that
+  remain are listed in `crates/spec/bootstrap`), instead of Bootstrap 5.0.2's with 1.54.3's
 
 # 0.14.0
 

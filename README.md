@@ -49,11 +49,13 @@ The crates were renamed: `grass` is `fugo-sass` (binary `fugo-sass`), `grass_com
 ## Status
 
 One can be quite confident in fugo-sass's output. For the average user there should not be
-perceptible differences from `dart-sass`. Every commit is tested against Bootstrap v5.0.2,
-whose output must match `dart-sass`'s byte for byte.
+perceptible differences from `dart-sass`. Every commit compiles Bootstrap 5.0.2 and 5.3.3, and CI
+checks the differences from `dart-sass` 1.105.1's CSS against a list that may only shrink
+([crates/spec](crates/spec/README.md)).
 
-fugo-sass currently targets `dart-sass` version `1.54.3`, as grass 0.13.4 did. Work is under
-way to follow the current `dart-sass` release (1.105.1).
+fugo-sass is moving from `dart-sass` 1.54.3, which grass 0.13.4 targeted, to 1.105.1: the
+[CHANGELOG](CHANGELOG.md) says what already follows 1.105.1, and the failing specs
+([`crates/spec/failures.txt`](crates/spec/failures.txt)) what does not yet.
 
 There are a number of known missing features and bugs. The rough edges largely include
 `@forward` and more complex uses of `@use`. Basic usage of these rules is supported, but more

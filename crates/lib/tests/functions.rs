@@ -191,7 +191,7 @@ test!(
 
         color: foo();
     }",
-    "a {\n  color: foo;\n  color: bar;\n}\n"
+    "a {\n  color: foo;\n}\na {\n  color: bar;\n}\n"
 );
 error!(
     disallows_unknown_at_rule,

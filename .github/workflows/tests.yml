@@ -79,23 +79,25 @@ jobs:
       - name: Build
         run: cargo build
 
-      - name: Install dart-sass 1.54.3
+      - name: Install dart-sass 1.105.1
         run: |
-          wget https://github.com/sass/dart-sass/releases/download/1.54.3/dart-sass-1.54.3-linux-x64.tar.gz
-          tar -xzvf dart-sass-1.54.3-linux-x64.tar.gz
+          wget -q https://github.com/sass/dart-sass/releases/download/1.105.1/dart-sass-1.105.1-linux-x64.tar.gz
+          tar -xzf dart-sass-1.105.1-linux-x64.tar.gz
 
-      - name: Install bootstrap
-        run: git clone --depth=1 --branch v5.0.2 https://github.com/twbs/bootstrap.git
-
-      - name: Verify unchanged output
+      # The differences between dart-sass's and fugo-sass's CSS for Bootstrap must be exactly those
+      # of crates/spec/bootstrap/<version>.diff (crates/spec/README.md).
+      - name: Compare Bootstrap's CSS with dart-sass's
         run: |
-          ./target/debug/fugo-sass bootstrap/scss/bootstrap.scss > fugo-sass-output.css
-          ./dart-sass/sass bootstrap/scss/bootstrap.scss > dart-sass-output.css
-
-          if [[ $(diff -u fugo-sass-output.css dart-sass-output.css) ]]; then
-              echo "Differences found"
-              diff -u fugo-sass-output.css dart-sass-output.css
-              exit 1
-          else
-              echo "No differences found"
-          fi
+          status=0
+          mkdir -p out
+          for version in 5.0.2 5.3.3; do
+            git clone -q --depth=1 --branch "v$version" https://github.com/twbs/bootstrap.git "bootstrap-$version"
+            crates/spec/bootstrap.sh "$PWD/dart-sass/sass" "$PWD/target/debug/fugo-sass" \
+              "$PWD/bootstrap-$version" "$PWD/out/$version" > "out/$version.diff"
+            if ! cmp -s "out/$version.diff" "crates/spec/bootstrap/$version.diff"; then
+              echo "Bootstrap $version: the differences from dart-sass changed:"
+              git diff --no-index --no-color "crates/spec/bootstrap/$version.diff" "out/$version.diff" || true
+              status=1
+            fi
+          done
+          exit $status
