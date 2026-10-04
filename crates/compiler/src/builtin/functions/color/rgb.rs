@@ -1,4 +1,5 @@
 use crate::{builtin::builtin_imports::*, serializer::inspect_number, value::fuzzy_round};
+use indexmap::IndexMap;
 
 use super::ParsedChannels;
 
@@ -325,7 +326,7 @@ fn inner_rgb(
                 ParsedChannels::List(list) => {
                     let args = ArgumentResult {
                         positional: list,
-                        named: BTreeMap::new(),
+                        named: IndexMap::new(),
                         separator: ListSeparator::Comma,
                         span: args.span(),
                         touched: BTreeSet::new(),

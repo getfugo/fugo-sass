@@ -1,4 +1,5 @@
-use std::{collections::BTreeMap, path::Path, sync::Arc};
+use indexmap::IndexMap;
+use std::{path::Path, sync::Arc};
 
 use codemap::{Span, Spanned};
 
@@ -200,7 +201,7 @@ impl<'a> CssParser<'a> {
                 name: identifier,
                 arguments: ArgumentInvocation {
                     positional: arguments,
-                    named: BTreeMap::new(),
+                    named: IndexMap::new(),
                     rest: None,
                     keyword_rest: None,
                     span: self.toks.span_from(before_args),

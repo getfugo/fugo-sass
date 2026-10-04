@@ -1,9 +1,5 @@
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashSet},
-    fmt,
-    sync::Arc,
-};
+use indexmap::{IndexMap, IndexSet};
+use std::{cell::RefCell, fmt, sync::Arc};
 
 use codemap::{Span, Spanned};
 
@@ -42,9 +38,9 @@ pub(crate) struct ShadowedModule {
 impl ShadowedModule {
     pub fn new(
         module: Arc<RefCell<Module>>,
-        variables: Option<&HashSet<Identifier>>,
-        functions: Option<&HashSet<Identifier>>,
-        mixins: Option<&HashSet<Identifier>>,
+        variables: Option<&IndexSet<Identifier>>,
+        functions: Option<&IndexSet<Identifier>>,
+        mixins: Option<&IndexSet<Identifier>>,
     ) -> Self {
         let module_scope = module.borrow().scope();
 
@@ -66,7 +62,7 @@ impl ShadowedModule {
 
     fn needs_blocklist<V: fmt::Debug + Clone>(
         map: Arc<dyn MapView<Value = V>>,
-        blocklist: Option<&HashSet<Identifier>>,
+        blocklist: Option<&IndexSet<Identifier>>,
     ) -> bool {
         blocklist.is_some()
             && !map.is_empty()
@@ -75,7 +71,7 @@ impl ShadowedModule {
 
     fn shadowed_map<V: fmt::Debug + Clone + 'static>(
         map: Arc<dyn MapView<Value = V>>,
-        blocklist: Option<&HashSet<Identifier>>,
+        blocklist: Option<&IndexSet<Identifier>>,
     ) -> Arc<dyn MapView<Value = V>> {
         match blocklist {
             Some(..) if !Self::needs_blocklist(Arc::clone(&map), blocklist) => map,
@@ -86,9 +82,9 @@ impl ShadowedModule {
 
     pub fn if_necessary(
         module: Arc<RefCell<Module>>,
-        variables: Option<&HashSet<Identifier>>,
-        functions: Option<&HashSet<Identifier>>,
-        mixins: Option<&HashSet<Identifier>>,
+        variables: Option<&IndexSet<Identifier>>,
+        functions: Option<&IndexSet<Identifier>>,
+        mixins: Option<&IndexSet<Identifier>>,
     ) -> Option<Arc<RefCell<Module>>> {
         let module_scope = module.borrow().scope();
 
@@ -156,8 +152,8 @@ impl ForwardedModule {
     fn forwarded_map<T: Clone + fmt::Debug + 'static>(
         mut map: Arc<dyn MapView<Value = T>>,
         prefix: Option<&str>,
-        safelist: Option<&HashSet<Identifier>>,
-        blocklist: Option<&HashSet<Identifier>>,
+        safelist: Option<&IndexSet<Identifier>>,
+        blocklist: Option<&IndexSet<Identifier>>,
     ) -> Arc<dyn MapView<Value = T>> {
         debug_assert!(safelist.is_none() || blocklist.is_none());
 
@@ -182,11 +178,11 @@ impl ForwardedModule {
             && rule
                 .hidden_mixins_and_functions
                 .as_ref()
-                .map_or(false, HashSet::is_empty)
+                .map_or(false, IndexSet::is_empty)
             && rule
                 .hidden_variables
                 .as_ref()
-                .map_or(false, HashSet::is_empty)
+                .map_or(false, IndexSet::is_empty)
         {
             module
         } else {
@@ -207,9 +203,9 @@ pub(crate) struct ModuleScope {
 impl ModuleScope {
     pub fn new() -> Self {
         Self {
-            variables: Arc::new(BaseMapView(Arc::new(RefCell::new(BTreeMap::new())))),
-            mixins: Arc::new(BaseMapView(Arc::new(RefCell::new(BTreeMap::new())))),
-            functions: Arc::new(BaseMapView(Arc::new(RefCell::new(BTreeMap::new())))),
+            variables: Arc::new(BaseMapView(Arc::new(RefCell::new(IndexMap::new())))),
+            mixins: Arc::new(BaseMapView(Arc::new(RefCell::new(IndexMap::new())))),
+            functions: Arc::new(BaseMapView(Arc::new(RefCell::new(IndexMap::new())))),
         }
     }
 }
@@ -234,11 +230,11 @@ pub(crate) enum Module {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Modules(pub BTreeMap<Identifier, Arc<RefCell<Module>>>);
+pub(crate) struct Modules(pub IndexMap<Identifier, Arc<RefCell<Module>>>);
 
 impl Modules {
     pub fn new() -> Self {
-        Self(BTreeMap::new())
+        Self(IndexMap::new())
     }
 
     pub fn insert(

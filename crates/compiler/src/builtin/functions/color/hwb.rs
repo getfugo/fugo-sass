@@ -1,4 +1,5 @@
 use crate::builtin::builtin_imports::*;
+use indexmap::IndexMap;
 
 use super::{
     angle_value,
@@ -84,7 +85,7 @@ pub(crate) fn hwb(mut args: ArgumentResult, visitor: &mut Visitor) -> SassResult
             ParsedChannels::List(list) => {
                 let args = ArgumentResult {
                     positional: list,
-                    named: BTreeMap::new(),
+                    named: IndexMap::new(),
                     separator: ListSeparator::Comma,
                     span: args.span(),
                     touched: BTreeSet::new(),

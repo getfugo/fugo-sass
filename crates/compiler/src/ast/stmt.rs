@@ -1,10 +1,5 @@
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashSet},
-    path::PathBuf,
-    rc::Rc,
-    sync::Arc,
-};
+use indexmap::{IndexMap, IndexSet};
+use std::{cell::RefCell, collections::HashSet, path::PathBuf, rc::Rc, sync::Arc};
 
 use codemap::{Span, Spanned};
 
@@ -366,7 +361,7 @@ impl Configuration {
         self.span.is_none()
     }
 
-    pub fn implicit(values: BTreeMap<Identifier, ConfiguredValue>) -> Self {
+    pub fn implicit(values: IndexMap<Identifier, ConfiguredValue>) -> Self {
         Self {
             values: Arc::new(BaseMapView(Arc::new(RefCell::new(values)))),
             original_config: None,
@@ -374,7 +369,7 @@ impl Configuration {
         }
     }
 
-    pub fn explicit(values: BTreeMap<Identifier, ConfiguredValue>, span: Span) -> Self {
+    pub fn explicit(values: IndexMap<Identifier, ConfiguredValue>, span: Span) -> Self {
         Self {
             values: Arc::new(BaseMapView(Arc::new(RefCell::new(values)))),
             original_config: None,
@@ -384,7 +379,7 @@ impl Configuration {
 
     pub fn empty() -> Self {
         Self {
-            values: Arc::new(BaseMapView(Arc::new(RefCell::new(BTreeMap::new())))),
+            values: Arc::new(BaseMapView(Arc::new(RefCell::new(IndexMap::new())))),
             original_config: None,
             span: None,
         }
@@ -428,10 +423,10 @@ impl ConfiguredValue {
 #[derive(Debug, Clone)]
 pub struct AstForwardRule {
     pub url: PathBuf,
-    pub shown_mixins_and_functions: Option<HashSet<Identifier>>,
-    pub shown_variables: Option<HashSet<Identifier>>,
-    pub hidden_mixins_and_functions: Option<HashSet<Identifier>>,
-    pub hidden_variables: Option<HashSet<Identifier>>,
+    pub shown_mixins_and_functions: Option<IndexSet<Identifier>>,
+    pub shown_variables: Option<IndexSet<Identifier>>,
+    pub hidden_mixins_and_functions: Option<IndexSet<Identifier>>,
+    pub hidden_variables: Option<IndexSet<Identifier>>,
     pub prefix: Option<String>,
     pub configuration: Vec<ConfiguredVariable>,
     pub span: Span,
@@ -458,8 +453,8 @@ impl AstForwardRule {
 
     pub fn show(
         url: PathBuf,
-        shown_mixins_and_functions: HashSet<Identifier>,
-        shown_variables: HashSet<Identifier>,
+        shown_mixins_and_functions: IndexSet<Identifier>,
+        shown_variables: IndexSet<Identifier>,
         prefix: Option<String>,
         configuration: Option<Vec<ConfiguredVariable>>,
         span: Span,
@@ -478,8 +473,8 @@ impl AstForwardRule {
 
     pub fn hide(
         url: PathBuf,
-        hidden_mixins_and_functions: HashSet<Identifier>,
-        hidden_variables: HashSet<Identifier>,
+        hidden_mixins_and_functions: IndexSet<Identifier>,
+        hidden_variables: IndexSet<Identifier>,
         prefix: Option<String>,
         configuration: Option<Vec<ConfiguredVariable>>,
         span: Span,

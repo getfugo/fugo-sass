@@ -1,4 +1,5 @@
 use codemap::{Span, Spanned};
+use indexmap::{IndexMap, IndexSet};
 
 use crate::{
     ast::{AstForwardRule, Configuration, ConfiguredValue, Mixin},
@@ -8,11 +9,7 @@ use crate::{
     selector::ExtensionStore,
     value::{SassFunction, Value},
 };
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashSet},
-    sync::Arc,
-};
+use std::{cell::RefCell, sync::Arc};
 
 type Mutable<T> = Arc<RefCell<T>>;
 
@@ -115,17 +112,17 @@ impl Environment {
                 .borrow()
                 .iter()
                 .flat_map(|module| (*module).borrow().scope().variables.keys())
-                .collect::<HashSet<Identifier>>();
+                .collect::<IndexSet<Identifier>>();
             let forwarded_fn_names = forwarded
                 .borrow()
                 .iter()
                 .flat_map(|module| (*module).borrow().scope().functions.keys())
-                .collect::<HashSet<Identifier>>();
+                .collect::<IndexSet<Identifier>>();
             let forwarded_mixin_names = forwarded
                 .borrow()
                 .iter()
                 .flat_map(|module| (*module).borrow().scope().mixins.keys())
-                .collect::<HashSet<Identifier>>();
+                .collect::<IndexSet<Identifier>>();
 
             if self.at_root() {
                 let mut to_remove = Vec::new();
@@ -198,7 +195,7 @@ impl Environment {
                     .last_mut()
                     .unwrap()
                     .borrow_mut()
-                    .remove(&variable);
+                    .shift_remove(&variable);
             }
             self.scopes.last_variable_index = None;
 
@@ -208,7 +205,7 @@ impl Environment {
                     .last_mut()
                     .unwrap()
                     .borrow_mut()
-                    .remove(&func);
+                    .shift_remove(&func);
             }
             for mixin in forwarded_mixin_names {
                 (*self.scopes.mixins)
@@ -216,13 +213,13 @@ impl Environment {
                     .last_mut()
                     .unwrap()
                     .borrow_mut()
-                    .remove(&mixin);
+                    .shift_remove(&mixin);
             }
         }
     }
 
     pub fn to_implicit_configuration(&self) -> Configuration {
-        let mut configuration = BTreeMap::new();
+        let mut configuration = IndexMap::new();
 
         let variables = (*self.scopes.variables).borrow();
 
@@ -399,15 +396,15 @@ impl Environment {
         &mut self.scopes
     }
 
-    pub fn global_vars(&self) -> Arc<RefCell<BTreeMap<Identifier, Value>>> {
+    pub fn global_vars(&self) -> Arc<RefCell<IndexMap<Identifier, Value>>> {
         self.scopes.global_variables()
     }
 
-    pub fn global_mixins(&self) -> Arc<RefCell<BTreeMap<Identifier, Mixin>>> {
+    pub fn global_mixins(&self) -> Arc<RefCell<IndexMap<Identifier, Mixin>>> {
         self.scopes.global_mixins()
     }
 
-    pub fn global_functions(&self) -> Arc<RefCell<BTreeMap<Identifier, SassFunction>>> {
+    pub fn global_functions(&self) -> Arc<RefCell<IndexMap<Identifier, SassFunction>>> {
         self.scopes.global_functions()
     }
 
