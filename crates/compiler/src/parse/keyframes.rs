@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{Token, ast::KeyframesSelector, error::SassResult, lexer::Lexer};
 
-use super::BaseParser;
+use super::{BaseParser, IdentifierParser};
 
 impl fmt::Display for KeyframesSelector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
