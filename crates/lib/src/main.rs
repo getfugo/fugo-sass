@@ -1,12 +1,12 @@
 use std::{
     fs::OpenOptions,
-    io::{stdin, stdout, Read, Write},
+    io::{Read, Write, stdin, stdout},
     path::Path,
 };
 
-use clap::{builder::PossibleValue, value_parser, Arg, ArgAction, Command, ValueEnum};
+use clap::{Arg, ArgAction, Command, ValueEnum, builder::PossibleValue, value_parser};
 
-use fugo_sass::{from_path, from_string, Options, OutputStyle};
+use fugo_sass::{Options, OutputStyle, from_path, from_string};
 
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub enum Style {

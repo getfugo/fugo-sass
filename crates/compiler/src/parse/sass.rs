@@ -2,7 +2,7 @@ use std::path::Path;
 
 use codemap::Span;
 
-use crate::{ast::*, error::SassResult, lexer::Lexer, ContextFlags, Options, Token};
+use crate::{ContextFlags, Options, Token, ast::*, error::SassResult, lexer::Lexer};
 
 use super::{BaseParser, StylesheetParser};
 
@@ -51,7 +51,7 @@ impl<'a> StylesheetParser<'a> for SassParser<'a> {
         self.path
     }
 
-    fn options(&self) -> &Options {
+    fn options(&self) -> &Options<'_> {
         self.options
     }
 

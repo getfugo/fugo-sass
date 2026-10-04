@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     error::SassResult,
-    unit::{Unit, UNIT_CONVERSION_TABLE},
+    unit::{UNIT_CONVERSION_TABLE, Unit},
 };
 
 use codemap::Span;
@@ -80,21 +80,13 @@ pub(crate) fn fuzzy_round(number: f64) -> f64 {
 
 /// `0` for `-0`: dart-sass rounds to integers, which have no negative zero.
 pub(crate) fn without_negative_zero(number: f64) -> f64 {
-    if number == 0.0 {
-        0.0
-    } else {
-        number
-    }
+    if number == 0.0 { 0.0 } else { number }
 }
 
 /// The sign of `value`, with `-0` negative (dart-sass's `signIncludingZero`).
 pub(crate) fn sign_including_zero(value: f64) -> f64 {
     if value == 0.0 {
-        if value.is_sign_negative() {
-            -1.0
-        } else {
-            1.0
-        }
+        if value.is_sign_negative() { -1.0 } else { 1.0 }
     } else {
         value.signum()
     }
@@ -111,20 +103,12 @@ pub(crate) fn fuzzy_less_than_or_equals(number1: f64, number2: f64) -> bool {
 impl Number {
     /// This differs from `std::cmp::min` when either value is NaN
     pub fn min(self, other: Self) -> Self {
-        if self < other {
-            self
-        } else {
-            other
-        }
+        if self < other { self } else { other }
     }
 
     /// This differs from `std::cmp::max` when either value is NaN
     pub fn max(self, other: Self) -> Self {
-        if self > other {
-            self
-        } else {
-            other
-        }
+        if self > other { self } else { other }
     }
 
     pub fn is_positive(self) -> bool {
@@ -427,11 +411,7 @@ fn modulo(n1: f64, n2: f64) -> f64 {
 
     let result = real_mod(n1, n2);
 
-    if result == 0.0 {
-        0.0
-    } else {
-        result + n2
-    }
+    if result == 0.0 { 0.0 } else { result + n2 }
 }
 
 impl Rem for Number {

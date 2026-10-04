@@ -80,10 +80,11 @@ impl fmt::Display for ComplexSelector {
         let mut last_component = None;
 
         for component in &self.components {
-            if let Some(c) = last_component {
-                if !omit_spaces_around(c) && !omit_spaces_around(component) {
-                    f.write_char(' ')?;
-                }
+            if let Some(c) = last_component
+                && !omit_spaces_around(c)
+                && !omit_spaces_around(component)
+            {
+                f.write_char(' ')?;
             }
             write!(f, "{}", component)?;
             last_component = Some(component);
@@ -185,8 +186,7 @@ impl ComplexSelector {
             while after_super_selector < other.components.len() {
                 if let Some(ComplexSelectorComponent::Compound(compound2)) =
                     other.components.get(after_super_selector - 1)
-                {
-                    if compound1.is_super_selector(
+                    && compound1.is_super_selector(
                         compound2,
                         &Some(
                             other
@@ -197,9 +197,9 @@ impl ComplexSelector {
                                 .cloned()
                                 .collect(),
                         ),
-                    ) {
-                        break;
-                    }
+                    )
+                {
+                    break;
                 }
 
                 after_super_selector += 1;

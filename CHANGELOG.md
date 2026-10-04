@@ -84,6 +84,11 @@
   (unless it is `!optional`); it was silently ignored
 - when a rule extends `.a`, an `@extend` written in `:is(.a) {@extend .b}` is extended too, as in
   `dart-sass`
+- the crates use the 2024 edition and need Rust 1.96 (fugo's minimum), where they needed 1.70;
+  CI tests and lints with Rust 1.99.0, and checks every crate on 1.96 and the WebAssembly build.
+  Dependencies are at their latest versions: `rand` 0.10, `phf` 0.14, `syn` 3, `clap` 4.6,
+  `indexmap` 2.14; `once_cell` is replaced by `std::sync::LazyLock`, and `getrandom` (with its
+  `wasm_js` backend) is only a dependency for WebAssembly targets
 
 # 0.14.0
 

@@ -3,6 +3,7 @@ use std::io::Write;
 use codemap::{CodeMap, Span};
 
 use crate::{
+    Options,
     ast::{CssStmt, MediaQuery, Style, SupportsRule},
     color::{Color, ColorFormat, NAMED_COLORS},
     common::{BinaryOp, Brackets, ListSeparator, QuoteKind},
@@ -14,10 +15,9 @@ use crate::{
     unit::Unit,
     utils::hex_char_for,
     value::{
-        fuzzy_as_int, fuzzy_equals, ArgList, CalculationArg, CalculationName, SassCalculation,
-        SassFunction, SassMap, SassMixin, SassNumber, Value,
+        ArgList, CalculationArg, CalculationName, SassCalculation, SassFunction, SassMap,
+        SassMixin, SassNumber, Value, fuzzy_as_int, fuzzy_equals,
     },
-    Options,
 };
 
 /// The indentation of the least-indented non-empty line of `text` after the first: `None` if
@@ -166,10 +166,11 @@ impl<'a> Serializer<'a> {
     }
 
     fn write_pseudo_selector(&mut self, pseudo: &Pseudo) {
-        if let Some(sel) = &pseudo.selector {
-            if pseudo.name == "not" && sel.is_invisible() {
-                return;
-            }
+        if let Some(sel) = &pseudo.selector
+            && pseudo.name == "not"
+            && sel.is_invisible()
+        {
+            return;
         }
 
         self.buffer.push(b':');
@@ -281,12 +282,11 @@ impl<'a> Serializer<'a> {
         let mut last_component = None;
 
         for component in &complex.components {
-            if let Some(c) = last_component {
-                if !self.omit_spaces_around_complex_component(c)
-                    && !self.omit_spaces_around_complex_component(component)
-                {
-                    self.buffer.push(b' ');
-                }
+            if let Some(c) = last_component
+                && !self.omit_spaces_around_complex_component(c)
+                && !self.omit_spaces_around_complex_component(component)
+            {
+                self.buffer.push(b' ');
             }
             self.write_complex_selector_component(component);
             last_component = Some(component);
@@ -590,7 +590,7 @@ impl<'a> Serializer<'a> {
             self.buffer.extend_from_slice(b"not ");
             let condition = query.conditions.first().unwrap();
             self.buffer
-                .extend_from_slice(condition["(not ".len()..condition.len() - 1].as_bytes());
+                .extend_from_slice(&condition.as_bytes()["(not ".len()..condition.len() - 1]);
         } else {
             let operator = if query.conjunction { " and " } else { " or " };
             self.buffer
@@ -1214,7 +1214,7 @@ impl<'a> Serializer<'a> {
                 continue;
             }
             self.buffer.push(b' ');
-            while chars.peek().map_or(false, |c| c.is_ascii_whitespace()) {
+            while chars.peek().is_some_and(|c| c.is_ascii_whitespace()) {
                 chars.next();
             }
         }

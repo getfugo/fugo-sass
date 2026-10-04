@@ -6,62 +6,96 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  # The toolchain CI builds, tests and lints with: the latest stable Rust.
+  RUST_TOOLCHAIN: "1.99.0"
+  # The minimum supported Rust version, `rust-version` in the crates' Cargo.toml (fugo's).
+  RUST_MSRV: "1.96.0"
+
 jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.70.0"
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: version info
         run: rustc --version; cargo --version;
 
       - name: Run all tests
-        run: cargo test --features=macro
+        run: cargo test --workspace --features=macro
 
   fmt:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.70.0"
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt
 
-      - run: |
-          rustup component add rustfmt
-          cargo fmt --all -- --check
+      - run: cargo fmt --all -- --check
 
   clippy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.70.0"
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+
+      - run: cargo clippy --workspace --all-targets --features=macro,wasm-exports -- -D warnings
+
+  # Every crate builds on its own with the minimum supported Rust version.
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_MSRV }}
 
       - run: |
-          rustup component add clippy
-          cargo clippy --features=macro -- -D warnings
+          cargo check --workspace --all-targets --features=macro,wasm-exports
+          cargo check -p fugo-sass-compiler --no-default-features
+          cargo check -p fugo-sass-macro
+          cargo check -p fugo-sass --no-default-features
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: wasm32-unknown-unknown
+
+      - run: cargo check -p fugo-sass --target wasm32-unknown-unknown --no-default-features --features=random,wasm-exports
 
   sass-spec:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
         with:
           submodules: true
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.70.0"
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: Run sass-spec (crates/spec)
         run: cargo spec --baseline crates/spec/failures.txt
@@ -70,11 +104,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: Build
         run: cargo build

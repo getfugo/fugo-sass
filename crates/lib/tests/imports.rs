@@ -15,10 +15,7 @@ fn null_fs_cannot_import() {
     ) {
         Err(e)
             if e.to_string()
-                .starts_with("Error: Can't find stylesheet to import.\n") =>
-        {
-            ()
-        }
+                .starts_with("Error: Can't find stylesheet to import.\n") => {}
         Ok(..) => panic!("did not fail"),
         Err(e) => panic!("failed in the wrong way: {}", e),
     }
@@ -50,7 +47,7 @@ fn import_no_semicolon() {
     let input = "@import \"import_no_semicolon\"\na {\n color: $a;\n}";
     tempfile!("import_no_semicolon", "$a: red;");
 
-    drop(input);
+    let _ = input;
 }
 
 #[test]
@@ -489,7 +486,7 @@ fn potentially_conflicting_directory_and_file_from_load_path() {
         "a {\n  color: right;\n}\n",
         &fugo_sass::from_string(
             input.to_string(),
-            &fugo_sass::Options::default().load_path(&Path::new(
+            &fugo_sass::Options::default().load_path(Path::new(
                 "potentially_conflicting_directory_and_file_from_load_path__a"
             ))
         )

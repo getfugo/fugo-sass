@@ -14,16 +14,18 @@ use codemap::{CodeMap, Span, Spanned};
 use indexmap::{IndexMap, IndexSet};
 
 use crate::{
+    ContextFlags, InputSyntax, Options,
     ast::*,
     builtin::{
+        GLOBAL_FUNCTIONS,
         meta::if_arguments,
         modules::{
-            declare_module_color, declare_module_list, declare_module_map, declare_module_math,
-            declare_module_meta, declare_module_selector, declare_module_string, Module,
+            Module, declare_module_color, declare_module_list, declare_module_map,
+            declare_module_math, declare_module_meta, declare_module_selector,
+            declare_module_string,
         },
-        GLOBAL_FUNCTIONS,
     },
-    common::{unvendor, BinaryOp, Brackets, Identifier, ListSeparator, QuoteKind, UnaryOp},
+    common::{BinaryOp, Brackets, Identifier, ListSeparator, QuoteKind, UnaryOp, unvendor},
     error::{SassError, SassResult},
     interner::InternedString,
     lexer::Lexer,
@@ -41,7 +43,6 @@ use crate::{
         ArgList, CalculationArg, CalculationName, Number, SassCalculation, SassFunction, SassMap,
         SassNumber, UserDefinedFunction, Value,
     },
-    ContextFlags, InputSyntax, Options,
 };
 
 use super::{
@@ -887,9 +888,8 @@ impl<'a> Visitor<'a> {
         };
 
         if let Some(builtin) = builtin {
-            // todo: lots of ugly unwraps here
-            if configuration.is_some()
-                && !(**configuration.as_ref().unwrap()).borrow().is_implicit()
+            if let Some(configuration) = configuration.as_ref().map(|c| c.borrow())
+                && !configuration.is_implicit()
             {
                 let msg = if names_in_errors {
                     format!(
@@ -900,11 +900,7 @@ impl<'a> Visitor<'a> {
                     "Built-in modules can't be configured.".to_owned()
                 };
 
-                return Err((
-                    msg,
-                    (**configuration.as_ref().unwrap()).borrow().span.unwrap(),
-                )
-                    .into());
+                return Err((msg, configuration.span.unwrap()).into());
             }
 
             callback(
@@ -1954,7 +1950,7 @@ impl<'a> Visitor<'a> {
                 .css_tree
                 .get(parent)
                 .as_ref()
-                .map_or(false, CssStmt::is_style_rule)
+                .is_some_and(CssStmt::is_style_rule)
             {
                 return true;
             }
@@ -3077,16 +3073,16 @@ impl<'a> Visitor<'a> {
         if len == 0 {
             return Err(("Missing argument.", span).into());
         }
-        if let Some(max) = max_args {
-            if len > max {
-                let argument = if max == 1 { "argument" } else { "arguments" };
-                let was = if len == 1 { "was" } else { "were" };
-                return Err((
-                    format!("Only {max} {argument} allowed, but {len} {was} passed."),
-                    span,
-                )
-                    .into());
-            }
+        if let Some(max) = max_args
+            && len > max
+        {
+            let argument = if max == 1 { "argument" } else { "arguments" };
+            let was = if len == 1 { "was" } else { "were" };
+            return Err((
+                format!("Only {max} {argument} allowed, but {len} {was} passed."),
+                span,
+            )
+                .into());
         }
         Ok(())
     }
@@ -3179,7 +3175,7 @@ impl<'a> Visitor<'a> {
                             ),
                             span,
                         )
-                            .into())
+                            .into());
                     }
                 }
             }
@@ -3198,7 +3194,7 @@ impl<'a> Visitor<'a> {
                         ),
                         span,
                     )
-                        .into())
+                        .into());
                 }
             },
             AstExpr::List(list)

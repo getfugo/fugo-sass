@@ -1,8 +1,8 @@
 use crate::{
+    Token,
     error::SassResult,
     lexer::Lexer,
     utils::{as_hex, hex_char_for, is_name, is_name_start, opposite_bracket},
-    Token,
 };
 
 pub(crate) trait BaseParser {
@@ -130,11 +130,11 @@ pub(crate) trait BaseParser {
     }
 
     fn scan_char(&mut self, c: char) -> bool {
-        if let Some(Token { kind, .. }) = self.toks().peek() {
-            if kind == c {
-                self.toks_mut().next();
-                return true;
-            }
+        if let Some(Token { kind, .. }) = self.toks().peek()
+            && kind == c
+        {
+            self.toks_mut().next();
+            return true;
         }
 
         false
@@ -205,7 +205,7 @@ pub(crate) trait BaseParser {
                 text.push_str(&self.parse_escape(true)?);
             }
             Some(..) | None => {
-                return Err(("Expected identifier.", self.toks().current_span()).into())
+                return Err(("Expected identifier.", self.toks().current_span()).into());
             }
         }
 
@@ -461,7 +461,7 @@ pub(crate) trait BaseParser {
                         || !self
                             .toks()
                             .peek_n(1)
-                            .map_or(false, |tok| tok.kind.is_ascii_whitespace())
+                            .is_some_and(|tok| tok.kind.is_ascii_whitespace())
                     {
                         buffer.push(c);
                     }
@@ -658,7 +658,7 @@ pub(crate) trait BaseParser {
             if case_sensitive {
                 actual == c
             } else {
-                actual.to_ascii_lowercase() == c.to_ascii_lowercase()
+                actual.eq_ignore_ascii_case(&c)
             }
         };
 

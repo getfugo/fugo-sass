@@ -30,10 +30,12 @@ mod rule;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 /// Different modes in which extension can run.
+#[derive(Default)]
 enum ExtendMode {
     /// Normal mode, used with the `@extend` rule.
     ///
     /// This preserves existing selectors and extends each target individually.
+    #[default]
     Normal,
 
     /// Replace mode, used by the `selector-replace()` function.
@@ -47,12 +49,6 @@ enum ExtendMode {
     /// This preserves existing selectors but requires every target to match to
     /// extend a given compound selector.
     AllTargets,
-}
-
-impl Default for ExtendMode {
-    fn default() -> Self {
-        Self::Normal
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -221,7 +217,7 @@ impl ExtensionStore {
                     });
                 }
                 match extended.as_mut() {
-                    Some(v) => v.extend(result.into_iter()),
+                    Some(v) => v.extend(result),
                     None => unreachable!(),
                 }
             } else if let Some(extended) = extended.as_mut() {
@@ -380,14 +376,14 @@ impl ExtensionStore {
                         let mut new_options = Vec::new();
                         if i != 0 {
                             new_options.push(vec![
-                                self.extension_for_compound(compound.components[..i].to_vec())
+                                self.extension_for_compound(compound.components[..i].to_vec()),
                             ]);
                         }
                         options.replace(new_options);
                     }
 
                     match options.as_mut() {
-                        Some(v) => v.extend(extended.into_iter()),
+                        Some(v) => v.extend(extended),
                         None => unreachable!(),
                     }
                 }
@@ -996,10 +992,10 @@ impl ExtensionStore {
             );
             for (target, new_sources) in &extension_store.extensions {
                 // Private selectors can't be extended across module boundaries.
-                if let SimpleSelector::Placeholder(name) = target {
-                    if name.starts_with('-') || name.starts_with('_') {
-                        continue;
-                    }
+                if let SimpleSelector::Placeholder(name) = target
+                    && (name.starts_with('-') || name.starts_with('_'))
+                {
+                    continue;
                 }
 
                 // Find existing extensions to extend.

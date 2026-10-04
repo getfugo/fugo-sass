@@ -1,7 +1,7 @@
 [package]
 name = "fugo-sass-compiler"
 version = "0.14.0"
-edition = "2021"
+edition = "2024"
 description = "The compiler behind fugo-sass, a Sass compiler written in Rust: its internals, with frequent breaking changes"
 readme = "README.md"
 license = "MIT"
@@ -9,7 +9,7 @@ categories = ["web-programming"]
 keywords = ["scss", "sass", "css", "web"]
 repository = "https://github.com/getfugo/fugo-sass"
 authors = ["Connor Skees <39542938+ConnorSkees@users.noreply.github.com>", "The fugo-sass authors"]
-rust-version = "1.70"
+rust-version = "1.96"
 
 [lib]
 name = "fugo_sass_compiler"
@@ -19,21 +19,19 @@ bench = false
 
 [package.metadata.docs.rs]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --no-deps --open
-rustdoc-args = ["--cfg", "doc_cfg"]
+# RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps --open
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-# todo: replace with std::cell::LazyCell (msrv 1.80.0)
-once_cell = "1.15.0"
 # todo: use xorshift for random numbers
-rand = { version = "0.8", optional = true }
+rand = { version = "0.10", optional = true }
 # todo: update to use asref<path>
 # todo: update to expose more info (for eww)
 # todo: update to use text_size::TextRange
 codemap = "0.1.3"
-wasm-bindgen = { version = "0.2.68", optional = true }
+wasm-bindgen = { version = "0.2.129", optional = true }
 # todo: benchmark using phf for global functions
-phf = { version = "0.11", features = ["macros"] }
+phf = { version = "0.14", features = ["macros"] }
 indexmap = "2"
 # todo: do we really need interning for things?
 lasso = "0.7"

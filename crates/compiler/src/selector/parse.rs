@@ -1,6 +1,6 @@
 use codemap::Span;
 
-use crate::{common::unvendor, error::SassResult, lexer::Lexer, parse::BaseParser, Token};
+use crate::{Token, common::unvendor, error::SassResult, lexer::Lexer, parse::BaseParser};
 
 use super::{
     Attribute, Combinator, ComplexSelector, ComplexSelectorComponent, CompoundSelector, Namespace,
@@ -480,7 +480,7 @@ impl SelectorParser {
             self.whitespace()?;
             match self.toks.peek() {
                 Some(t) if !t.kind.is_ascii_digit() => {
-                    return Err(("Expected a number.", self.span).into())
+                    return Err(("Expected a number.", self.span).into());
                 }
                 None => return Err(("Expected a number.", self.span).into()),
                 Some(..) => {}
@@ -509,8 +509,8 @@ fn is_simple_selector_start(c: char) -> bool {
 /// `:first-letter`)
 fn is_fake_pseudo_element(name: &str) -> bool {
     match name.as_bytes().first() {
-        Some(b'a') | Some(b'A') => name.to_ascii_lowercase() == "after",
-        Some(b'b') | Some(b'B') => name.to_ascii_lowercase() == "before",
+        Some(b'a') | Some(b'A') => name.eq_ignore_ascii_case("after"),
+        Some(b'b') | Some(b'B') => name.eq_ignore_ascii_case("before"),
         Some(b'f') | Some(b'F') => matches!(
             name.to_ascii_lowercase().as_str(),
             "first-line" | "first-letter"

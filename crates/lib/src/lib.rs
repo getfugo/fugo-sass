@@ -31,7 +31,7 @@ fugo-sass input.scss
 ```
 */
 
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(clippy::all, clippy::cargo, clippy::dbg_macro)]
 #![deny(missing_debug_implementations)]
 #![allow(
@@ -66,8 +66,8 @@ fugo-sass input.scss
 )]
 
 pub use fugo_sass_compiler::{
-    from_path, from_string, Error, ErrorKind, Fs, InputSyntax, Logger, NullFs, NullLogger, Options,
-    OutputStyle, Result, StdFs, StdLogger,
+    Error, ErrorKind, Fs, InputSyntax, Logger, NullFs, NullLogger, Options, OutputStyle, Result,
+    StdFs, StdLogger, from_path, from_string,
 };
 
 /// Include CSS in your binary at compile time from a Sass source file
@@ -90,10 +90,10 @@ pub use fugo_sass_compiler::{
 /// for all options are used, except for output style, which is compressed.
 #[macro_export]
 #[cfg(any(feature = "macro", doc))]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "macro")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "macro")))]
 macro_rules! include {
     ($path:literal) => {
-        $crate::__internal::fugo_sass_macro::include_sass!($path);
+        $crate::__internal::fugo_sass_macro::include_sass!($path)
     };
 }
 

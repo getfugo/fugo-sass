@@ -150,6 +150,12 @@ impl TestFs {
     }
 }
 
+impl Default for TestFs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(unused)]
 impl Fs for TestFs {
     fn is_file(&self, path: &Path) -> bool {

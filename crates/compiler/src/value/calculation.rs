@@ -8,12 +8,12 @@ use std::{f64::consts, iter::Iterator};
 use codemap::Span;
 
 use crate::{
+    Options,
     common::BinaryOp,
     error::SassResult,
     serializer::inspect_number,
     unit::Unit,
-    value::{conversion_factor, fuzzy_less_than, sign_including_zero, Number, SassNumber, Value},
-    Options,
+    value::{Number, SassNumber, Value, conversion_factor, fuzzy_less_than, sign_including_zero},
 };
 
 /// An argument of a calculation: a number, a calculation, an unquoted string (interpolation
@@ -189,7 +189,7 @@ impl SassCalculation {
         let mut extremum: Option<&SassNumber> = None;
         for arg in &args {
             match arg {
-                CalculationArg::Number(n) if extremum.map_or(true, |e| e.is_comparable_to(n)) => {
+                CalculationArg::Number(n) if extremum.is_none_or(|e| e.is_comparable_to(n)) => {
                     let replace = match extremum {
                         None => true,
                         Some(e) => {
@@ -353,16 +353,16 @@ impl SassCalculation {
             Some(CalculationArg::Number(value)),
             Some(CalculationArg::Number(max)),
         ) = (&min, &value, &max)
+            && min.has_compatible_units(&value.unit)
+            && min.has_compatible_units(&max.unit)
         {
-            if min.has_compatible_units(&value.unit) && min.has_compatible_units(&max.unit) {
-                if value.num <= min.num.convert(&min.unit, &value.unit) {
-                    return Ok(Value::Dimension(min.clone()));
-                }
-                if value.num >= max.num.convert(&max.unit, &value.unit) {
-                    return Ok(Value::Dimension(max.clone()));
-                }
-                return Ok(Value::Dimension(value.clone()));
+            if value.num <= min.num.convert(&min.unit, &value.unit) {
+                return Ok(Value::Dimension(min.clone()));
             }
+            if value.num >= max.num.convert(&max.unit, &value.unit) {
+                return Ok(Value::Dimension(max.clone()));
+            }
+            return Ok(Value::Dimension(value.clone()));
         }
 
         let args: Vec<CalculationArg> = std::iter::once(min).chain(value).chain(max).collect();
@@ -432,12 +432,13 @@ impl SassCalculation {
         let args: Vec<CalculationArg> = std::iter::once(y).chain(x).collect();
         Self::verify_length(&args, 2, span)?;
         Self::verify_compatible_numbers(&args, options, span)?;
-        if let [CalculationArg::Number(y), CalculationArg::Number(x)] = args.as_slice() {
-            if y.unit != Unit::Percent && x.unit != Unit::Percent && y.has_compatible_units(&x.unit)
-            {
-                let x = x.num.convert(&x.unit, &y.unit).0;
-                return Ok(Value::Dimension(Self::degrees(y.num.0.atan2(x))));
-            }
+        if let [CalculationArg::Number(y), CalculationArg::Number(x)] = args.as_slice()
+            && y.unit != Unit::Percent
+            && x.unit != Unit::Percent
+            && y.has_compatible_units(&x.unit)
+        {
+            let x = x.num.convert(&x.unit, &y.unit).0;
+            return Ok(Value::Dimension(Self::degrees(y.num.0.atan2(x))));
         }
         Ok(Self::value(CalculationName::Atan2, args))
     }
@@ -496,11 +497,11 @@ impl SassCalculation {
         let args: Vec<CalculationArg> = std::iter::once(left).chain(right).collect();
         Self::verify_length(&args, 2, span)?;
         Self::verify_compatible_numbers(&args, options, span)?;
-        if let [CalculationArg::Number(l), CalculationArg::Number(r)] = args.as_slice() {
-            if l.has_compatible_units(&r.unit) {
-                let numbers = (l.clone(), r.clone());
-                return Ok((args, Some(numbers)));
-            }
+        if let [CalculationArg::Number(l), CalculationArg::Number(r)] = args.as_slice()
+            && l.has_compatible_units(&r.unit)
+        {
+            let numbers = (l.clone(), r.clone());
+            return Ok((args, Some(numbers)));
         }
         Ok((args, None))
     }
@@ -656,7 +657,7 @@ impl SassCalculation {
 
         if step_value.is_infinite() {
             return match (strategy, value) {
-                (_, v) if v == 0.0 => number.clone(),
+                (_, 0.0) => number.clone(),
                 ("nearest" | "to-zero", v) if v > 0.0 => matching(0.0),
                 ("nearest" | "to-zero", _) => matching(-0.0),
                 ("up", v) if v > 0.0 => matching(f64::INFINITY),
@@ -724,20 +725,19 @@ impl SassCalculation {
         if op == BinaryOp::Plus || op == BinaryOp::Minus {
             if let (CalculationArg::Number(l), CalculationArg::Number(r)) = (&left, &right) {
                 let mut compatible = l.has_compatible_units(&r.unit);
-                if !compatible {
-                    if let Some(name) = in_legacy_sass_function {
-                        if l.is_comparable_to(r) {
-                            warn(&format!(
-                                "In future versions of Sass, {name}() will be interpreted as the \
+                if !compatible
+                    && let Some(name) = in_legacy_sass_function
+                    && l.is_comparable_to(r)
+                {
+                    warn(&format!(
+                        "In future versions of Sass, {name}() will be interpreted as the \
                                  CSS {name}() calculation. This doesn't allow unitless numbers to \
                                  be mixed with numbers with units. If you want to use the Sass \
                                  function, call math.{name}() instead.\n\
                                  \n\
                                  See https://sass-lang.com/d/import"
-                            ));
-                            compatible = true;
-                        }
-                    }
+                    ));
+                    compatible = true;
                 }
                 if compatible {
                     let (l, r) = (l.clone(), r.clone());
@@ -751,15 +751,15 @@ impl SassCalculation {
 
             Self::verify_compatible_numbers(&[left.clone(), right.clone()], options, span)?;
 
-            if let CalculationArg::Number(n) = &mut right {
-                if fuzzy_less_than(n.num.0, 0.0) {
-                    n.num = -n.num;
-                    op = if op == BinaryOp::Plus {
-                        BinaryOp::Minus
-                    } else {
-                        BinaryOp::Plus
-                    };
-                }
+            if let CalculationArg::Number(n) = &mut right
+                && fuzzy_less_than(n.num.0, 0.0)
+            {
+                n.num = -n.num;
+                op = if op == BinaryOp::Plus {
+                    BinaryOp::Minus
+                } else {
+                    BinaryOp::Plus
+                };
             }
 
             return Ok(CalculationArg::Operation {
@@ -805,17 +805,17 @@ impl SassCalculation {
         span: Span,
     ) -> SassResult<()> {
         for arg in args {
-            if let CalculationArg::Number(n) = arg {
-                if n.unit.is_complex() {
-                    return Err((
-                        format!(
-                            "Number {} isn't compatible with CSS calculations.",
-                            inspect_number(n, options, span)?
-                        ),
-                        span,
-                    )
-                        .into());
-                }
+            if let CalculationArg::Number(n) = arg
+                && n.unit.is_complex()
+            {
+                return Err((
+                    format!(
+                        "Number {} isn't compatible with CSS calculations.",
+                        inspect_number(n, options, span)?
+                    ),
+                    span,
+                )
+                    .into());
             }
         }
 

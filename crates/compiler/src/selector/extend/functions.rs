@@ -177,10 +177,12 @@ fn weave_parents(
         }),
     );
 
-    let mut choices = vec![vec![initial_combinators
-        .into_iter()
-        .map(ComplexSelectorComponent::Combinator)
-        .collect::<Vec<ComplexSelectorComponent>>()]];
+    let mut choices = vec![vec![
+        initial_combinators
+            .into_iter()
+            .map(ComplexSelectorComponent::Combinator)
+            .collect::<Vec<ComplexSelectorComponent>>(),
+    ]];
 
     for group in lcs {
         choices.push(
@@ -374,17 +376,21 @@ fn merge_final_combinators(
         // is a supersequence of the other, use that, otherwise give up.
         let lcs = longest_common_subsequence(&combinators_one, &combinators_two, None);
         if lcs == combinators_one {
-            result.push_front(vec![combinators_two
-                .into_iter()
-                .map(ComplexSelectorComponent::Combinator)
-                .rev()
-                .collect()]);
+            result.push_front(vec![
+                combinators_two
+                    .into_iter()
+                    .map(ComplexSelectorComponent::Combinator)
+                    .rev()
+                    .collect(),
+            ]);
         } else if lcs == combinators_two {
-            result.push_front(vec![combinators_one
-                .into_iter()
-                .map(ComplexSelectorComponent::Combinator)
-                .rev()
-                .collect()]);
+            result.push_front(vec![
+                combinators_one
+                    .into_iter()
+                    .map(ComplexSelectorComponent::Combinator)
+                    .rev()
+                    .collect(),
+            ]);
         } else {
             return None;
         }
@@ -521,14 +527,13 @@ fn merge_final_combinators(
             merge_final_combinators(components_one, components_two, Some(result))
         }
         (Some(combinator_one), None) => {
-            if *combinator_one == Combinator::Child && !components_two.is_empty() {
-                if let Some(ComplexSelectorComponent::Compound(c1)) = components_one.back() {
-                    if let Some(ComplexSelectorComponent::Compound(c2)) = components_two.back() {
-                        if c2.is_super_selector(c1, &None) {
-                            components_two.pop_back();
-                        }
-                    }
-                }
+            if *combinator_one == Combinator::Child
+                && !components_two.is_empty()
+                && let Some(ComplexSelectorComponent::Compound(c1)) = components_one.back()
+                && let Some(ComplexSelectorComponent::Compound(c2)) = components_two.back()
+                && c2.is_super_selector(c1, &None)
+            {
+                components_two.pop_back();
             }
 
             result.push_front(vec![vec![
@@ -539,14 +544,13 @@ fn merge_final_combinators(
             merge_final_combinators(components_one, components_two, Some(result))
         }
         (None, Some(combinator_two)) => {
-            if *combinator_two == Combinator::Child && !components_one.is_empty() {
-                if let Some(ComplexSelectorComponent::Compound(c1)) = components_one.back() {
-                    if let Some(ComplexSelectorComponent::Compound(c2)) = components_two.back() {
-                        if c1.is_super_selector(c2, &None) {
-                            components_one.pop_back();
-                        }
-                    }
-                }
+            if *combinator_two == Combinator::Child
+                && !components_one.is_empty()
+                && let Some(ComplexSelectorComponent::Compound(c1)) = components_one.back()
+                && let Some(ComplexSelectorComponent::Compound(c2)) = components_two.back()
+                && c1.is_super_selector(c2, &None)
+            {
+                components_one.pop_back();
             }
 
             result.push_front(vec![vec![
@@ -610,7 +614,7 @@ fn group_selectors(
         let mut last_group = groups.pop_back().unwrap();
         if last_group
             .last()
-            .map_or(false, ComplexSelectorComponent::is_combinator)
+            .is_some_and(ComplexSelectorComponent::is_combinator)
             || c.is_combinator()
         {
             last_group.push(c);

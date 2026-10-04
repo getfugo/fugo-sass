@@ -187,7 +187,7 @@ pub(crate) fn get_function(mut args: ArgumentResult, visitor: &mut Visitor) -> S
                 format!("$name: {} is not a string.", v.inspect(args.span())?),
                 args.span(),
             )
-                .into())
+                .into());
         }
     };
     let css = args.default_arg(1, "css", Value::False).is_truthy();
@@ -199,7 +199,7 @@ pub(crate) fn get_function(mut args: ArgumentResult, visitor: &mut Visitor) -> S
                 format!("$module: {} is not a string.", v.inspect(args.span())?),
                 args.span(),
             )
-                .into())
+                .into());
         }
     };
 
@@ -259,7 +259,7 @@ pub(crate) fn call(mut args: ArgumentResult, visitor: &mut Visitor) -> SassResul
                 ),
                 span,
             )
-                .into())
+                .into());
         }
     };
 
@@ -293,7 +293,7 @@ pub(crate) fn keywords(mut args: ArgumentResult, visitor: &mut Visitor) -> SassR
                 format!("$args: {} is not an argument list.", v.inspect(span)?),
                 span,
             )
-                .into())
+                .into());
         }
     };
 
@@ -358,7 +358,7 @@ pub(crate) fn get_mixin(mut args: ArgumentResult, visitor: &mut Visitor) -> Sass
                 format!("$name: {} is not a string.", v.inspect(span)?),
                 span,
             )
-                .into())
+                .into());
         }
     };
     let module = nullable_module_name(args.default_arg(1, "module", Value::Null), span)?;
