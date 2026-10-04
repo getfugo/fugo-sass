@@ -22,6 +22,10 @@
   where `selector.replace(..)` panicked; errors in selector arguments start with the argument's
   name (`$selector1: expected more input.`), except for `selector.nest(..)` and
   `selector.append(..)`, whose errors `dart-sass` does not prefix
+- `@extend`: extending the same selector from different media queries is an error, as in
+  `dart-sass`, where it panicked; a style rule inside `@media` keeps its media context, so
+  `@extend` across media queries fails as in `dart-sass` instead of compiling; extensions merged
+  with earlier ones, and those found while extending other extensions, are kept
 
 # 0.14.0
 

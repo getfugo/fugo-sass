@@ -72,11 +72,12 @@ pub(crate) struct ExtensionStore {
     /// extenders define.
     extensions_by_extender: HashMap<SimpleSelector, Vec<Extension>>,
 
-    /// A map from CSS selectors to the media query contexts they're defined in.
+    /// A map from the style rules' selectors (by identity, as dart-sass keys its boxes) to the
+    /// media query contexts they're defined in.
     ///
     /// This tracks the contexts in which each selector's style rule is defined.
     /// If a rule is defined at the top level, it doesn't have an entry.
-    media_contexts: HashMap<SelectorList, Vec<CssMediaQuery>>,
+    media_contexts: HashMap<ExtendedSelector, Vec<CssMediaQuery>>,
 
     /// A map from `SimpleSelector`s to the specificity of their source
     /// selectors.
@@ -884,12 +885,11 @@ impl ExtensionStore {
             }
               */
         }
-        if let Some(mut media_query_context) = media_query_context.clone() {
-            self.media_contexts
-                .get_mut(&selector)
-                .replace(&mut media_query_context);
-        }
         let extended_selector = ExtendedSelector::new(selector.clone());
+        if let Some(media_query_context) = media_query_context {
+            self.media_contexts
+                .insert(extended_selector.clone(), media_query_context.clone());
+        }
         self.register_selector(selector, &extended_selector);
         extended_selector
     }
@@ -942,7 +942,7 @@ impl ExtensionStore {
         extend: &ExtendRule,
         media_context: &Option<Vec<CssMediaQuery>>,
         span: Span,
-    ) {
+    ) -> SassResult<()> {
         let selectors = self.selectors.get(target).cloned();
         let existing_extensions = self.extensions_by_extender.get(target).cloned();
 
@@ -966,12 +966,11 @@ impl ExtensionStore {
                 .entry(target.clone())
                 .or_insert_with(IndexMap::new);
 
-            if let Some(existing_state) = sources.get(&complex) {
+            if let Some(existing_state) = sources.get(&complex).cloned() {
                 // If there's already an extend from `extender` to `target`, we don't need
                 // to re-run the extension. We may need to mark the extension as
                 // mandatory, though.
-                let mut new_val = MergedExtension::merge(existing_state.clone(), state).unwrap();
-                sources.get_mut(&complex).replace(&mut new_val);
+                sources.insert(complex, MergedExtension::merge(existing_state, state)?);
                 continue;
             }
 
@@ -1003,7 +1002,7 @@ impl ExtensionStore {
         let new_extensions = if let Some(new) = new_extensions {
             new
         } else {
-            return;
+            return Ok(());
         };
 
         let mut new_extensions_by_target = HashMap::new();
@@ -1011,7 +1010,7 @@ impl ExtensionStore {
 
         if let Some(existing_extensions) = existing_extensions {
             let additional_extensions =
-                self.extend_existing_extensions(existing_extensions, &new_extensions_by_target);
+                self.extend_existing_extensions(existing_extensions, &new_extensions_by_target)?;
             if let Some(additional_extensions) = additional_extensions {
                 map_add_all_2(&mut new_extensions_by_target, additional_extensions);
             }
@@ -1020,6 +1019,7 @@ impl ExtensionStore {
         if let Some(selectors) = selectors {
             self.extend_existing_selectors(selectors, &new_extensions_by_target);
         }
+        Ok(())
     }
 
     /// Extend `extensions` using `new_extensions`.
@@ -1041,16 +1041,15 @@ impl ExtensionStore {
         &mut self,
         extensions: Vec<Extension>,
         new_extensions: &HashMap<SimpleSelector, IndexMap<ComplexSelector, Extension>>,
-    ) -> Option<HashMap<SimpleSelector, IndexMap<ComplexSelector, Extension>>> {
+    ) -> SassResult<Option<HashMap<SimpleSelector, IndexMap<ComplexSelector, Extension>>>> {
         let mut additional_extensions: Option<
             HashMap<SimpleSelector, IndexMap<ComplexSelector, Extension>>,
         > = None;
         for extension in extensions {
-            let mut sources = self
-                .extensions
-                .get(&extension.target.clone().unwrap())
-                .unwrap()
-                .clone();
+            let target = extension.target.clone().unwrap();
+            // dart-sass updates this map in place; it is taken out of the store while the
+            // extension is expanded, and put back below.
+            let mut sources = self.extensions.get(&target).unwrap().clone();
 
             // `extend_existing_selectors` would have thrown already.
             let selectors: Vec<ComplexSelector> = if let Some(v) = self.extend_complex(
@@ -1084,16 +1083,13 @@ impl ExtensionStore {
                 }
 
                 let with_extender = extension.clone().with_extender(complex.clone());
-                let existing_extension = sources.get(&complex);
-                if let Some(existing_extension) = existing_extension.cloned() {
-                    sources.get_mut(&complex).replace(
-                        &mut MergedExtension::merge(existing_extension.clone(), with_extender)
-                            .unwrap(),
+                if let Some(existing_extension) = sources.get(&complex).cloned() {
+                    sources.insert(
+                        complex.clone(),
+                        MergedExtension::merge(existing_extension, with_extender)?,
                     );
                 } else {
-                    sources
-                        .get_mut(&complex)
-                        .replace(&mut with_extender.clone());
+                    sources.insert(complex.clone(), with_extender.clone());
 
                     for component in complex.components.clone() {
                         if let ComplexSelectorComponent::Compound(component) = component {
@@ -1106,10 +1102,10 @@ impl ExtensionStore {
                         }
                     }
 
-                    if new_extensions.contains_key(&extension.target.clone().unwrap()) {
+                    if new_extensions.contains_key(&target) {
                         additional_extensions
                             .get_or_insert_with(HashMap::new)
-                            .entry(extension.target.clone().unwrap())
+                            .entry(target.clone())
                             .or_insert_with(IndexMap::new)
                             .insert(complex.clone(), with_extender.clone());
                     }
@@ -1122,8 +1118,9 @@ impl ExtensionStore {
                 // todo: evaluate whether we could get away with swap_remove
                 sources.shift_remove(&extension.extender);
             }
+            self.extensions.insert(target, sources);
         }
-        additional_extensions
+        Ok(additional_extensions)
     }
 
     /// Extend `extensions` using `new_extensions`.
@@ -1137,7 +1134,7 @@ impl ExtensionStore {
             selector.set_inner(self.extend_list(
                 old_value.clone(),
                 Some(new_extensions),
-                &self.media_contexts.get(&old_value).cloned(),
+                &self.media_contexts.get(&selector).cloned(),
             ));
             /*
             todo: error handling
@@ -1179,14 +1176,12 @@ fn map_add_all_2<K1: Hash + Eq, K2: Hash + Eq, V>(
     destination: &mut HashMap<K1, IndexMap<K2, V>>,
     source: HashMap<K1, IndexMap<K2, V>>,
 ) {
-    for (key, mut inner) in source {
-        if destination.contains_key(&key) {
-            destination
-                .get_mut(&key)
-                .get_or_insert(&mut IndexMap::new())
-                .extend(inner);
-        } else {
-            destination.get_mut(&key).replace(&mut inner);
+    for (key, inner) in source {
+        match destination.get_mut(&key) {
+            Some(existing) => existing.extend(inner),
+            None => {
+                destination.insert(key, inner);
+            }
         }
     }
 }
