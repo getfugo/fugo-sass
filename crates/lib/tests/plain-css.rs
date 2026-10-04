@@ -118,11 +118,12 @@ error!(
     fugo_sass::Options::default().input_syntax(InputSyntax::Css)
 );
 error!(
+    // Plain CSS parses `if()` as a CSS `if()`, which needs a condition such as `css()`.
     disallows_if_function,
     "a {
         color: if(true, a, b);
     }",
-    "Error: This function isn't allowed in plain CSS.",
+    "Error: expected \"(\".",
     fugo_sass::Options::default().input_syntax(InputSyntax::Css)
 );
 error!(

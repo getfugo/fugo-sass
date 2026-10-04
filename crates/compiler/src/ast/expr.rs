@@ -5,15 +5,145 @@ use codemap::{Span, Spanned};
 use crate::{
     color::Color,
     common::{BinaryOp, Brackets, Identifier, ListSeparator, QuoteKind, UnaryOp},
+    error::SassResult,
     unit::Unit,
     value::Number,
 };
 
 use super::{ArgumentInvocation, AstSupportsCondition, Interpolation, InterpolationPart};
 
-/// Represented by the `if` function
+/// The legacy `if($condition, $if-true, $if-false)` function, which only evaluates one of its
+/// branches.
 #[derive(Debug, Clone)]
 pub struct Ternary(pub ArgumentInvocation);
+
+/// A CSS `if()` expression (dart-sass 1.95), which also takes `sass()` conditions that are
+/// evaluated at compile time.
+#[derive(Debug, Clone)]
+pub struct IfExpr {
+    /// The branches, in order. A `None` condition is an `else` branch.
+    ///
+    /// This is never empty.
+    pub branches: Vec<(Option<IfCondition>, Spanned<AstExpr>)>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IfConditionOp {
+    And,
+    Or,
+}
+
+impl IfConditionOp {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::And => "and",
+            Self::Or => "or",
+        }
+    }
+}
+
+/// A condition of an [`IfExpr`] branch.
+#[derive(Debug, Clone)]
+pub enum IfCondition {
+    /// `(condition)`
+    Parenthesized(Box<Self>, Span),
+    /// `not condition`
+    Negation(Box<Self>, Span),
+    /// Two or more conditions separated by the same operator.
+    Operation(Vec<Self>, IfConditionOp),
+    /// A plain-CSS function-style condition, such as `media(...)` or `var(...)`.
+    Function {
+        name: Interpolation,
+        arguments: Interpolation,
+        span: Span,
+    },
+    /// `sass(expression)`, which is true when the expression is truthy.
+    Sass(Spanned<AstExpr>, Span),
+    /// Raw text, possibly with interpolation: explicit interpolation, or a whole condition that
+    /// uses arbitrary substitutions in place of operators.
+    Raw(Interpolation, Span),
+}
+
+impl IfCondition {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Parenthesized(_, span)
+            | Self::Negation(_, span)
+            | Self::Function { span, .. }
+            | Self::Sass(_, span)
+            | Self::Raw(_, span) => *span,
+            Self::Operation(expressions, _) => expressions
+                .first()
+                .unwrap()
+                .span()
+                .merge(expressions.last().unwrap().span()),
+        }
+    }
+
+    /// Whether this is an arbitrary substitution, which may be replaced with several tokens when
+    /// the CSS is used.
+    pub fn is_arbitrary_substitution(&self) -> bool {
+        match self {
+            Self::Function { name, .. } => match name.as_plain() {
+                Some(name) => {
+                    let lower = name.to_ascii_lowercase();
+                    matches!(lower.as_str(), "if" | "var" | "attr") || lower.starts_with("--")
+                }
+                None => false,
+            },
+            Self::Raw(..) => true,
+            Self::Parenthesized(..) | Self::Negation(..) | Self::Operation(..) | Self::Sass(..) => {
+                false
+            }
+        }
+    }
+
+    /// The interpolation that produces the same text as this condition.
+    ///
+    /// `sass()` conditions can't be written this way, which is an error at `substitution`, the
+    /// arbitrary substitution that requires it.
+    pub fn to_interpolation(&self, substitution: Span) -> SassResult<Interpolation> {
+        let mut buffer = Interpolation::new();
+        match self {
+            Self::Parenthesized(expression, _) => {
+                buffer.add_char('(');
+                buffer.add_interpolation(expression.to_interpolation(substitution)?);
+                buffer.add_char(')');
+            }
+            Self::Negation(expression, _) => {
+                buffer.add_string("not ".to_owned());
+                buffer.add_interpolation(expression.to_interpolation(substitution)?);
+            }
+            Self::Operation(expressions, op) => {
+                for (i, expression) in expressions.iter().enumerate() {
+                    if i != 0 {
+                        buffer.add_string(format!(" {} ", op.as_str()));
+                    }
+                    buffer.add_interpolation(expression.to_interpolation(substitution)?);
+                }
+            }
+            Self::Function {
+                name, arguments, ..
+            } => {
+                buffer.add_interpolation(name.clone());
+                buffer.add_char('(');
+                buffer.add_interpolation(arguments.clone());
+                buffer.add_char(')');
+            }
+            Self::Sass(..) => {
+                return Err((
+                    "if() conditions with arbitrary substitutions may not contain sass() \
+                     expressions.",
+                    substitution,
+                )
+                    .into())
+            }
+            Self::Raw(text, _) => buffer.add_interpolation(text.clone()),
+        }
+        Ok(buffer)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ListExpr {
@@ -59,7 +189,8 @@ pub enum AstExpr {
     False,
     Color(Arc<Color>),
     FunctionCall(FunctionCallExpr),
-    If(Arc<Ternary>),
+    If(Arc<IfExpr>),
+    LegacyIf(Arc<Ternary>),
     InterpolatedFunction(Arc<InterpolatedFunction>),
     List(ListExpr),
     Map(AstSassMap),
@@ -203,7 +334,10 @@ impl AstExpr {
                     && binop.rhs.is_calculation_safe()
             }
             Self::True | Self::False | Self::Color(..) | Self::Map(..) | Self::Null => false,
-            Self::FunctionCall(..) | Self::If(..) | Self::InterpolatedFunction(..) => true,
+            Self::FunctionCall(..)
+            | Self::If(..)
+            | Self::LegacyIf(..)
+            | Self::InterpolatedFunction(..) => true,
             Self::List(list) => {
                 list.separator == ListSeparator::Space
                     && list.brackets == Brackets::None

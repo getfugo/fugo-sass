@@ -102,3 +102,8 @@ test!(
     }",
     "a {\n  --color:;\n}\n"
 );
+test!(
+    strings_keep_their_quotes,
+    r##"a {--a: 'b' "c\"d" "#{1 + 1}";}"##,
+    "a {\n  --a: 'b' \"c\\\"d\" \"2\";\n}\n"
+);

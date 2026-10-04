@@ -1188,9 +1188,24 @@ impl<'a, 'c, P: StylesheetParser<'a>> ValueParser<'a, 'c, P> {
 
         if let Some(plain) = plain {
             if plain == "if" && parser.toks().next_char_is('(') {
-                let call_args = parser.parse_argument_invocation(false, false)?;
-                let span = call_args.span;
-                return Ok(AstExpr::If(Arc::new(Ternary(call_args))).span(span));
+                // The legacy `if($condition, $if-true, $if-false)` and the CSS `if(condition:
+                // value)` can only be told apart by parsing, so try the former first (as
+                // dart-sass does).
+                let before_paren = parser.toks().cursor();
+                let flags = *parser.flags();
+                match parser.parse_argument_invocation(false, false) {
+                    Ok(call_args) => {
+                        let span = parser.toks_mut().span_from(start);
+                        return Ok(AstExpr::LegacyIf(Arc::new(Ternary(call_args))).span(span));
+                    }
+                    Err(..) => {
+                        parser.toks_mut().set_cursor(before_paren);
+                        *parser.flags_mut() = flags;
+                        return parser.parse_if_expression(start);
+                    }
+                }
+            } else if plain.eq_ignore_ascii_case("if") && parser.toks().next_char_is('(') {
+                return parser.parse_if_expression(start);
             } else if plain == "not" {
                 parser.whitespace()?;
 
