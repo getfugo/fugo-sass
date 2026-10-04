@@ -76,6 +76,10 @@ impl SelectorHashSet {
     pub fn insert(&mut self, selector: ExtendedSelector) {
         self.0.insert(selector);
     }
+
+    pub fn extend(&mut self, other: Self) {
+        self.0.extend(other.0);
+    }
 }
 
 impl IntoIterator for SelectorHashSet {

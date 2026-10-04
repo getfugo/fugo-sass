@@ -222,9 +222,10 @@ impl ModuleScope {
 pub(crate) enum Module {
     Environment {
         scope: ModuleScope,
-        #[allow(dead_code)]
-        upstream: Vec<Module>,
-        #[allow(dead_code)]
+        /// The modules this one used, forwarded or imported.
+        upstream: Vec<Arc<RefCell<Module>>>,
+        /// Whether the module itself (not its upstream modules) wrote CSS.
+        contains_css: bool,
         extension_store: ExtensionStore,
         #[allow(dead_code)]
         env: Environment,
@@ -316,7 +317,7 @@ fn member_map<V: fmt::Debug + Clone + 'static>(
 }
 
 impl Module {
-    pub fn new_env(env: Environment, extension_store: ExtensionStore) -> Self {
+    pub fn new_env(env: Environment, extension_store: ExtensionStore, contains_css: bool) -> Self {
         let variables = {
             let variables = (*env.forwarded_modules).borrow();
             let variables = variables
@@ -350,9 +351,11 @@ impl Module {
             functions,
         };
 
+        let upstream = env.all_modules.borrow().clone();
         Module::Environment {
             scope,
-            upstream: Vec::new(),
+            upstream,
+            contains_css,
             extension_store,
             env,
         }

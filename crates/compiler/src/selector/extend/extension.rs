@@ -32,10 +32,9 @@ pub(crate) struct Extension {
     /// The span in which `extender` was defined.
     pub span: Span,
 
-    #[allow(dead_code)]
+    /// For an extension merged from two (`MergedExtension`), the two.
     pub left: Option<Box<Extension>>,
 
-    #[allow(dead_code)]
     pub right: Option<Box<Extension>>,
 }
 
@@ -71,6 +70,18 @@ impl Extension {
         }
 
         // Err(("You may not @extend selectors across media queries.", self.span).into())
+    }
+
+    /// The extensions this was merged from, or this one if it wasn't merged.
+    pub fn unmerge(&self) -> Vec<Extension> {
+        match (&self.left, &self.right) {
+            (Some(left), Some(right)) => {
+                let mut extensions = left.unmerge();
+                extensions.extend(right.unmerge());
+                extensions
+            }
+            _ => vec![self.clone()],
+        }
     }
 
     #[allow(clippy::missing_const_for_fn)]

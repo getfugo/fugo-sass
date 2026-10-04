@@ -77,6 +77,13 @@
 - `meta.function-exists()` and `meta.mixin-exists()` find members of modules used with `as *`
 - module namespaces keep their underscores, as in `dart-sass`: `a_b` and `a-b` are different
   namespaces; a `$module` that isn't a string is "neither a string nor a module reference"
+- `@extend` reaches the modules a stylesheet uses and forwards, as in `dart-sass`: `@use "a"; b
+  {@extend %c}` extends `%c` in `a`, which was silently ignored. Private placeholders (`%-a`) are
+  not extended across modules
+- an `@extend` whose target is in no style rule is an error, `The target selector was not found.`
+  (unless it is `!optional`); it was silently ignored
+- when a rule extends `.a`, an `@extend` written in `:is(.a) {@extend .b}` is extended too, as in
+  `dart-sass`
 
 # 0.14.0
 
