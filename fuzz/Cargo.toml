@@ -1,7 +1,7 @@
 
 [package]
 authors = ["Automatically generated"]
-edition = "2018"
+edition = "2024"
 name = "fugo-sass-fuzz"
 publish = false
 version = "0.0.0"
@@ -10,7 +10,7 @@ version = "0.0.0"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.3"
+libfuzzer-sys = "0.4.13"
 
 [dependencies.fugo-sass]
 path = "../crates/lib"

@@ -1,1 +1,2 @@
-edition = "2018"
+# rustfmt run on its own reads the edition here; `cargo fmt` takes it from Cargo.toml.
+edition = "2024"

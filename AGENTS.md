@@ -41,8 +41,12 @@ limit, so the next change doesn't need a split.
 
 ## Toolchain
 
-- Edition 2024. The minimum supported Rust version is 1.96 (`rust-version`, fugo's own); CI tests,
-  lints and formats with Rust 1.99.0 (`RUST_TOOLCHAIN` in `.github/workflows/tests.yml`).
+- The root `Cargo.toml` holds what the crates share, in `[workspace.package]` (edition 2024,
+  `rust-version` 1.99, the version) and `[workspace.dependencies]` (every dependency's version);
+  a crate inherits them with `<key>.workspace = true`. Change versions there, not in a crate.
+- Rust 1.99, the latest stable, is both the minimum the crates support and what CI tests, lints and
+  formats with (`RUST_TOOLCHAIN` in `.github/workflows/tests.yml`). `rustfmt.toml` only sets the
+  edition, for rustfmt run on its own (`cargo fmt` reads Cargo.toml's): keep the two equal.
 - Before pushing:
 
   ```sh

@@ -1,16 +1,16 @@
 [package]
 name = "fugo-sass-spec"
 version = "0.0.0"
-edition = "2024"
 description = "Runs sass-spec, the official Sass test suite, against fugo-sass"
-license = "MIT"
-repository = "https://github.com/getfugo/fugo-sass"
 publish = false
-rust-version = "1.96"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "fugo-sass-spec"
 path = "src/main.rs"
 
 [dependencies]
-fugo-sass-compiler = { path = "../compiler", default-features = false, features = ["random"] }
+fugo-sass-compiler = { workspace = true, features = ["random"] }

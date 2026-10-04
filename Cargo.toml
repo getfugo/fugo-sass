@@ -7,6 +7,40 @@ members = [
     "crates/spec",
 ]
 
+# What the crates share: they inherit it with `<key>.workspace = true`.
+[workspace.package]
+version = "0.14.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
+repository = "https://github.com/getfugo/fugo-sass"
+authors = [
+    "Connor Skees <39542938+ConnorSkees@users.noreply.github.com>",
+    "The fugo-sass authors",
+]
+keywords = ["scss", "sass", "css", "web"]
+
+# Every dependency's version, for the crates to use with `<name>.workspace = true` (and their
+# own `features` or `optional`).
+[workspace.dependencies]
+# The workspace's crates, at exactly `workspace.package.version`.
+fugo-sass-compiler = { path = "crates/compiler", version = "=0.14.0", default-features = false }
+fugo-sass-macro = { path = "crates/include_sass", version = "=0.14.0" }
+
+clap = "4.6.7"
+codemap = "0.1.3"
+getrandom = "0.4.3"
+indexmap = "2.14.2"
+lasso = "0.7.3"
+phf = "0.14.0"
+quote = { version = "1.0.47", default-features = false }
+rand = "0.10.3"
+syn = { version = "3.0.6", default-features = false }
+wasm-bindgen = "0.2.129"
+
+paste = "1.0.15"
+tempfile = "3.27.0"
+
 [profile.release]
 debug = 1
 panic = "abort"
