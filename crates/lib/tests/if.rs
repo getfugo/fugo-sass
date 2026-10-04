@@ -266,3 +266,44 @@ test!(
     }",
     "a {\n  color: red;\n}\n"
 );
+test!(
+    css_if_sass_condition,
+    "a {b: if(sass(1 == 1): c; else: d)}",
+    "a {\n  b: c;\n}\n"
+);
+test!(css_if_uppercase, "a {b: IF(else: c)}", "a {\n  b: c;\n}\n");
+test!(
+    css_if_keeps_css_conditions,
+    "a {b: if(media(print): c; sass(false): d; else: e)}",
+    "a {\n  b: if(media(print): c; else: e);\n}\n"
+);
+test!(
+    css_if_without_match_is_null,
+    "a {b: if(sass(false): c); d: e}",
+    "a {\n  d: e;\n}\n"
+);
+test!(
+    css_if_arbitrary_substitution,
+    "a {b: if(var(--x) css(): c)}",
+    "a {\n  b: if(var(--x) css(): c);\n}\n"
+);
+test!(
+    css_if_values_are_expanded_when_compressed,
+    "a {b: if(css(): 0.5px)}",
+    "a{b:if(css(): 0.5px)}",
+    fugo_sass::Options::default().style(fugo_sass::OutputStyle::Compressed)
+);
+test!(
+    legacy_if_function,
+    "$x: 1; a {b: if($x == 1, c, d)}",
+    "a {\n  b: c;\n}\n"
+);
+error!(
+    css_if_sass_condition_in_arbitrary_substitution,
+    "a {b: if(sass(true) var(--x): c)}",
+    "Error: if() conditions with arbitrary substitutions may not contain sass() expressions."
+);
+error!(
+    css_if_not_takes_one_group,
+    "a {b: if(not sass(false) and (supports(display: grid)): c)}", "Error: expected \":\"."
+);

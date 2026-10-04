@@ -50,6 +50,13 @@
   in nested rules; a plain CSS rule with `&` in a Sass rule is nested too (1.87). A parent selector
   `&` at the root of the document is written as is (1.99), where it was an error; one with a suffix
   is an error. `@font-face` in a style rule is pulled out to the root (1.58.4)
+- the CSS `if()` function (`dart-sass` 1.95): `if(media(print): a; sass($x > 1): b; else: c)`.
+  `sass()` conditions are evaluated at compile time; the branches whose conditions are only known
+  in the browser are written as an `if()`. `if($condition, $if-true, $if-false)` still works, and
+  is not yet reported as deprecated
+- quoted strings in custom properties, `if()` conditions, and `@supports` and `@import`
+  conditions are written as they are in the source (`--a: 'b'`), as in `dart-sass` 1.105.1, where
+  they were requoted (`"b"`)
 
 # 0.14.0
 

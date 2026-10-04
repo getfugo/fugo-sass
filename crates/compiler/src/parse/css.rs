@@ -163,6 +163,10 @@ impl<'a> CssParser<'a> {
 
         let before_args = self.toks.cursor();
 
+        if lower == "if" && self.toks.next_char_is('(') {
+            return self.parse_if_expression(start);
+        }
+
         if !self.scan_char('(') {
             let span = self.toks.span_from(start);
             return Ok(AstExpr::String(StringExpr(identifier, QuoteKind::None), span).span(span));
