@@ -1980,3 +1980,20 @@ error!(
 // todo: extend_loop (massive test)
 // todo: extend tests in folders
 // todo: copy all :where extend tests, https://github.com/sass/sass-spec/pull/1783/files
+
+#[test]
+fn extend_reaches_every_rule_of_a_selector() {
+    // Style rules' selectors were hashed by address but compared by value, so of two rules with
+    // the same selector the second lost its extensions whenever the random hasher made their
+    // hashes meet: a few of these 200 rules on every run.
+    let mut input: String = (0..200)
+        .map(|i| format!(".a {{ order: {i}; }}\n"))
+        .collect();
+    input.push_str(".b { @extend .a; }\n");
+    let css = fugo_sass::from_string(
+        input,
+        &fugo_sass::Options::default().style(fugo_sass::OutputStyle::Compressed),
+    )
+    .unwrap();
+    assert_eq!(css.matches(".a,.b{").count(), 200, "{css}");
+}

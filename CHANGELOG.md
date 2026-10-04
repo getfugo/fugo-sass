@@ -13,6 +13,8 @@ The first release of fugo-sass, the fork of grass 0.13.4. The crates were rename
 `fugo-sass` (binary `fugo-sass`), `grass_compiler` is `fugo-sass-compiler` and `include_sass` is
 `fugo-sass-macro`.
 
+- fix `@extend` skipping, at random, a style rule whose selector another rule also has: selectors
+  were hashed by identity but compared by value (getfugo/fugo#167)
 - fix overflow in `string.split(..)` (connorskees/grass#102, unreleased in grass)
 
 # 0.13.4
