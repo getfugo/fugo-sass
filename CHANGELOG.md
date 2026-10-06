@@ -7,6 +7,12 @@
 
 -->
 
+# Unreleased
+
+- the WebAssembly built for a release (the `wasm` artifact of the `Build WebAssembly` workflow)
+  exports `from_string(input)`, with the `wasm-exports` feature: 0.14.0's exported nothing, and
+  0.15.0's failed to build, on a Rust older than 1.99
+
 # 0.15.0
 
 Closer to `dart-sass` 1.105.1: fugo-sass passes 8,612 of the 14,347 sass-spec specs that apply to
