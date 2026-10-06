@@ -7,7 +7,9 @@
 
 -->
 
-# Unreleased
+# 0.15.1
+
+The crates are those of 0.15.0; this release builds the WebAssembly that 0.15.0's failed to.
 
 - the WebAssembly built for a release (the `wasm` artifact of the `Build WebAssembly` workflow)
   exports `from_string(input)`, with the `wasm-exports` feature: 0.14.0's exported nothing, and
