@@ -153,7 +153,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fugo-sass"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "clap",
  "fugo-sass-compiler",
@@ -165,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "fugo-sass-compiler"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "codemap",
  "indexmap",
@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "fugo-sass-macro"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "fugo-sass-compiler",
  "quote",
