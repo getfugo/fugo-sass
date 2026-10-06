@@ -45,9 +45,10 @@ limit, so the next change doesn't need a split.
 - The root `Cargo.toml` holds what the crates share, in `[workspace.package]` (edition 2024,
   `rust-version` 1.99, the version) and `[workspace.dependencies]` (every dependency's version);
   a crate inherits them with `<key>.workspace = true`. Change versions there, not in a crate.
-- Rust 1.99, the latest stable, is both the minimum the crates support and what CI tests, lints and
-  formats with (`RUST_TOOLCHAIN` in `.github/workflows/tests.yml`). `rustfmt.toml` only sets the
-  edition, for rustfmt run on its own (`cargo fmt` reads Cargo.toml's): keep the two equal.
+- Rust 1.99, the latest stable, is both the minimum the crates support and what CI tests, lints,
+  formats and builds the WebAssembly with (`RUST_TOOLCHAIN` in `.github/workflows/tests.yml` and
+  `build_wasm.yml`: change both with `rust-version`). `rustfmt.toml` only sets the edition, for
+  rustfmt run on its own (`cargo fmt` reads Cargo.toml's): keep the two equal.
 - Before pushing:
 
   ```sh

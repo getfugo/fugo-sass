@@ -6,6 +6,11 @@ on:
       
   workflow_dispatch:
 
+env:
+  # The toolchain the crates need (`rust-version` in Cargo.toml's `[workspace.package]`), as in
+  # tests.yml: the runner's preinstalled Rust can be older.
+  RUST_TOOLCHAIN: "1.99.0"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,7 +18,13 @@ jobs:
     steps:
     - name: 'Checkout Repository'
       uses: actions/checkout@v7
-        
+
+    - name: 'Install Rust'
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
+        targets: wasm32-unknown-unknown
+
     - name: 'Install wasm-pack'
       run: |
         curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
@@ -21,9 +32,10 @@ jobs:
     
     - name: 'Build WebAssembly'
       run: |
-        rustup target add wasm32-unknown-unknown
         pushd ./crates/lib
-        wasm-pack build --release --target web --out-name index
+        # `wasm-exports` exports `from_string` to JavaScript: without it the module exports nothing.
+        wasm-pack build --release --target web --out-name index -- \
+          --no-default-features --features=random,wasm-exports
         popd
         mkdir -p artifacts
         find crates/lib/pkg -type f \( -name "*.js" -o -name "*.d.ts" -o -name "*.wasm" \) -exec cp {} artifacts \;
